@@ -88,7 +88,7 @@ Public Function BuildFromRow(SampleCell As Range, _
     Dim D As Scripting.Dictionary
     Set D = BuildSampleDict(SampleCell, RequestType, ChemicalID)
 
-    Dim S As New clsSample
+    Dim S As New clsTRSample
     S.Initialize m_Logger
     S.LoadFromDict D
 
@@ -132,8 +132,7 @@ Private Function ResolveChemicalID(FormChemName As String, SampleName As String)
     Set C = m_ChemicalSvc.GetByName(FormChemName)
 
     If C Is Nothing Then
-        m_Logger.LogError "clsSampleFormParser.ResolveChemicalID", _
-            "Chemical not found: '" & FormChemName & "' — sample: " & SampleName
+        m_Logger.LogError "clsSampleFormParser.ResolveChemicalID", vbObjectError + 1, "Chemical not found: '" & FormChemName & "' — sample: " & SampleName
         ResolveChemicalID = 0
     Else
         ResolveChemicalID = C.ID

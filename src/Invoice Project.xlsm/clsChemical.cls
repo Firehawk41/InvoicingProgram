@@ -107,14 +107,16 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     RequireKey D, "metals_prep"
     RequireKey D, "silicon_prep"
     RequireKey D, "ions_prep"
-    RequireKey D, "entry_date"
+    RequireKey D, "database_entry_date"
 
     m_ID = CLng(D("chemical_id"))
     m_Name = CStr(D("chemical_name"))
     m_MetalsPrep = CStr(D("metals_prep"))
     m_SiliconPrep = CStr(D("silicon_prep"))
     m_IonsPrep = CStr(D("ions_prep"))
-    m_EntryDate = CDate(D("entry_date"))
+    If Not IsNull(D("database_entry_date")) Then
+        m_EntryDate = CDate(D("database_entry_date"))
+    End If
 
     If D.Exists("ked_elements") Then
         If TypeOf D("ked_elements") Is Scripting.Dictionary Then

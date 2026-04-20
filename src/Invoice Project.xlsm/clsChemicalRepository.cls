@@ -64,11 +64,9 @@ Public Function SelectAll() As Variant
     AssertInit "SelectAll"
     If Not m_Logger.DebugMode Then On Error GoTo EH
 
-    SelectAll = m_AccessDB.ExecuteQuery( _
-        "SELECT chemical_id, chemical_name, metals_prep, " & _
-        "       silicon_prep, ions_prep, entry_date " & _
-        "FROM   chemicals " & _
-        "ORDER BY chemical_name")
+    SelectAll = m_AccessDB.ExecuteQuery("SELECT ID, chemical_name, metals_prep, silicon_prep, ions_prep, database_entry_date " & _
+                "FROM chemicals " & _
+                "ORDER BY chemical_name")
     Exit Function
 EH:                                 HandleError "SelectAll", "Failed"
 End Function

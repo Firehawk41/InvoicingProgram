@@ -57,9 +57,9 @@ Public Function SelectAll() As Variant
     If Not m_Logger.DebugMode Then On Error GoTo EH
 
     SelectAll = m_AccessDB.ExecuteQuery( _
-        "SELECT ID, name, description " & _
+        "SELECT ID, analysis_name, analysis_description " & _
         "FROM   analyses " & _
-        "ORDER BY name")
+        "ORDER BY analysis_name")
     Exit Function
 EH:                         HandleError "SelectAll", "Failed"
 End Function

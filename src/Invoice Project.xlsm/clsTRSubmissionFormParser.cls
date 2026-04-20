@@ -201,8 +201,7 @@ Private Function ResolveCustomer(WkS As Worksheet) As clsCustomer
     Set C = m_CustomerSvc.GetOrPrompt(NameOnForm)
 
     If C Is Nothing Then
-        m_Logger.LogError "clsSubmissionFormParser.ResolveCustomer", _
-            "Could not resolve customer '" & NameOnForm & "' — submission will have CustomerID = 0."
+        m_Logger.LogError "clsSubmissionFormParser.ResolveCustomer", vbObjectError + 1, "Could not resolve customer '" & NameOnForm & "' — submission will have CustomerID = 0."
     End If
 
     Set ResolveCustomer = C
@@ -422,7 +421,7 @@ Private Sub AttachSamples(Sub_ As clsTRSubmission, WkS As Worksheet, RequestType
     If SampleRange Is Nothing Then Exit Sub
 
     Dim SampleCell As Range
-    Dim S          As clsSample
+    Dim S          As clsTRSample
 
     For Each SampleCell In SampleRange.Columns(1).Cells
         If Not IsEmpty(SampleCell) And Len(Trim$(CStr(SampleCell.Value))) > 0 Then

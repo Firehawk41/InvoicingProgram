@@ -49,8 +49,8 @@ End Property
 Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
 
     Debug.Assert Not Logger Is Nothing
-    Debug.Assert Not AccessDB Is Nothing
     Debug.Assert m_Logger Is Nothing
+    Debug.Assert Not AccessDB Is Nothing
 
     If Not Logger.DebugMode Then On Error GoTo ErrorHandler
 
@@ -58,7 +58,6 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
 
     Set m_Logger = Logger
     Set m_Gatekeeper = New clsInvoiceReportGatekeeper
-
 
     ' Build the four domain services required by clsSubmissionService.
     Dim CustomerSvc As New clsCustomerService

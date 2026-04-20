@@ -22,6 +22,7 @@ Private Sub DisplayInvoiceUF(DebugMode As Boolean)
     Dim Logger As clsLoggingSystem
     Dim InvoiceUserForm As frmInvoiceTypeSelector
     Dim StartDate As Date
+    Dim EndDate As Date
     Dim SelectedFilePath As String
     Dim ErrorMessage As String
     Dim InvoiceType As InvoiceTypeEnum
@@ -57,6 +58,7 @@ Private Sub DisplayInvoiceUF(DebugMode As Boolean)
 
     ' Extract information from the userform
     StartDate = InvoiceUserForm.StartDate
+    EndDate = InvoiceUserForm.EndDate
     SelectedFilePath = InvoiceUserForm.SelectedFilePath
     InvoiceOutput = InvoiceUserForm.OutputType
     InvoiceSelection = InvoiceUserForm.InvoiceSelection
@@ -71,7 +73,7 @@ Private Sub DisplayInvoiceUF(DebugMode As Boolean)
     ' Close the userform
     Set InvoiceUserForm = Nothing
 
-    Call GenerateSalesOrders(StartDate, SelectedFilePath, Logger, InvoiceSelection)
+    Call GenerateSalesOrders(StartDate, EndDate, SelectedFilePath, Logger, InvoiceSelection)
 
 CleanUp:
 
@@ -100,7 +102,7 @@ ErrorHandler:
 
 End Sub
 
-Public Function GenerateSalesOrders(StartDate As Date, FilePath As String, Logger As clsLoggingSystem, Optional InvoiceSelection As InvoiceSelectionEnum = InvoiceSelectionEnum.Batch, Optional EndDate As Date) As Boolean
+Public Function GenerateSalesOrders(StartDate As Date, EndDate As Date, FilePath As String, Logger As clsLoggingSystem, Optional InvoiceSelection As InvoiceSelectionEnum = InvoiceSelectionEnum.Batch) As Boolean
 
     Dim AccessDB As clsAccessDatabase
     Dim SubmissionManager As clsInvoiceSubmissionManager
@@ -156,7 +158,7 @@ Public Function GenerateSalesOrders(StartDate As Date, FilePath As String, Logge
 
     ' Build sales orders
     Set SalesOrderManager = New clsInvoiceSalesOrderManager
-    Call SalesOrderManager.Initialize(Logger, AccessDB)
+    Call SalesOrderManager.Initialize(SalesOrderBuilder, Logger)
     Call SalesOrderManager.BuildFromSubmissions(SubmissionManager.Submissions)
 
     ' Write CSV

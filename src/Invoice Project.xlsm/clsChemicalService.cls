@@ -59,7 +59,7 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
     If Not Logger.DebugMode Then On Error GoTo EH
     Set m_Logger = Logger
 
-    Set m_Repo = New clsChemicalRepo
+    Set m_Repo = New clsChemicalRepository
     m_Repo.Initialize AccessDB, Logger
 
     Set m_Cache = New clsChemicalCache

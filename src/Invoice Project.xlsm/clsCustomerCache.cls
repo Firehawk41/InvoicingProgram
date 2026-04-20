@@ -71,12 +71,12 @@ Public Sub Build()
     '                         3=city, 4=postal_code, 5=country
     For i = LBound(Customers, 2) To UBound(Customers, 2)
         Set D = New Scripting.Dictionary
-        D.Add "customer_id", Customers(0, i)
-        D.Add "customer_name", Customers(1, i)
-        D.Add "street_address", Customers(2, i)
-        D.Add "city", Customers(3, i)
-        D.Add "postal_code", Customers(4, i)
-        D.Add "country", Customers(5, i)
+        D.Add "customer_id", NullToDefault(Customers(0, i), 0)
+        D.Add "customer_name", NullToDefault(Customers(1, i), "")
+        D.Add "street_address", NullToDefault(Customers(2, i), "")
+        D.Add "city", NullToDefault(Customers(3, i), "")
+        D.Add "postal_code", NullToDefault(Customers(4, i), "")
+        D.Add "country", NullToDefault(Customers(5, i), "")
 
         Set C = New clsCustomer
         C.Initialize m_Logger
@@ -186,14 +186,20 @@ End Function
 ' Private helpers
 ' ----------------------------------------------------------------
 Private Sub StoreInIndex(C As clsCustomer)
-    m_ByID(C.ID) = C
-    m_ByName(NormName(C.Name)) = C
+    Set m_ByID(C.ID) = C
+    Set m_ByName(NormName(C.Name)) = C
 End Sub
 
 Private Function NormName(V As String) As String
     NormName = LCase$(Trim$(V))
 End Function
-
+Private Function NullToDefault(Value As Variant, Default As Variant) As Variant
+    If IsNull(Value) Then
+        NullToDefault = Default
+    Else
+        NullToDefault = Value
+    End If
+End Function
 Private Sub AssertInit(Src As String)
     If m_Logger Is Nothing Then
         Err.Raise vbObjectError + 1, "clsCustomerCache." & Src, "Not initialized"

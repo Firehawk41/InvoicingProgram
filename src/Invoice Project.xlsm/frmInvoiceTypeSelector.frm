@@ -60,13 +60,11 @@ Public Property Get OutputType() As InvoiceOutputEnum
 End Property
 Public Property Get StartDate() As Date
     ' Only relevant for summary invoices
-    If btnWeekly.Value Then
-        StartDate = GetStartOfWeek(CInt(cboDate.Value))
-    ElseIf btnMonthly.Value Then
-        StartDate = GetFirstDayOfMonth(cboDate.Value)
-    End If
+    StartDate = CDate(cboStartDate)
 End Property
-
+Public Property Get EndDate() As Date
+    EndDate = CDate(cboEndDate)
+End Property
 
 ' Returns the file path selected by the user (only relevant for individual invoices)
 Public Property Get SelectedFilePath() As Variant
@@ -149,6 +147,8 @@ Private Sub cboDate_Change()
     End If
 End Sub
 
+
+
 Private Sub OKButton_Click()
     Call m_Logger.LogMessage("OKButton_Click", LogLevelEnum.LogDebug, "OK button clicked. Processing invoice.")
 
@@ -188,10 +188,10 @@ Private Sub OKButton_Click()
             Me.Hide
         Case btnWeekly.Value Or btnMonthly.Value
             ' Check if customer or date are empty
-            If Len(cboDate.Value) = 0 Then
+            If Len(cboStartDate.Value) = 0 Then
                 Call m_Logger.LogMessage("OKButton_Click", LogLevelEnum.LogWarning, "Invoice cannot be processed: Missing date.", , True)
             Else
-                Call m_Logger.LogMessage("OKButton_Click", LogLevelEnum.LogInfo, "Invoice processed with date: " & cboDate.Value)
+                Call m_Logger.LogMessage("OKButton_Click", LogLevelEnum.LogInfo, "Invoice processed with date: " & cboStartDate.Value)
                 Me.Hide
             End If
 
@@ -297,3 +297,6 @@ Private Function GetWeekNumber(InputDate As Date) As Integer
     GetWeekNumber = WeekNum
 End Function
 
+Private Sub UserForm_Click()
+
+End Sub

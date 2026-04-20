@@ -77,9 +77,7 @@ Public Function BuildFromWorksheet(WkS As Worksheet) As clsTRSubmission
     Dim Sub_ As clsTRSubmission
     Set Sub_ = m_FormParser.BuildFromWorksheet(WkS)
 
-    m_Logger.LogInfo "clsSubmissionService.BuildFromWorksheet", _
-        "Built submission from: " & WkS.Parent.Name & _
-        " | Samples: " & Sub_.Samples.Count
+    m_Logger.LogMessage "clsSubmissionService.BuildFromWorksheet", LogLevelEnum.LogInfo, "Built submission from: " & WkS.Parent.Name & " | Samples: " & Sub_.Samples.Count
 
     Set BuildFromWorksheet = Sub_
     Exit Function

@@ -77,7 +77,7 @@ Public Sub Build()
     KEDRows = m_Repo.SelectAllKEDElements
 
     ' No chemicals in DB is valid — leave the cache empty.
-    If IsEmpty(Chemicals) Then Exit Sub
+    If IsNull(Chemicals) Then Exit Sub
 
     ' Pre-index all KED rows by chemical_id before the main loop.
     Dim KEDMap As Scripting.Dictionary
@@ -98,7 +98,7 @@ Public Sub Build()
         D.Add "metals_prep", Chemicals(2, i)
         D.Add "silicon_prep", Chemicals(3, i)
         D.Add "ions_prep", Chemicals(4, i)
-        D.Add "entry_date", Chemicals(5, i)
+        D.Add "database_entry_date", Chemicals(5, i)
         If KEDMap.Exists(ChemID) Then
             D.Add "ked_elements", KEDMap(ChemID)
         End If
@@ -211,8 +211,8 @@ End Function
 ' Private helpers
 ' ----------------------------------------------------------------
 Private Sub StoreInIndex(C As clsChemical)
-    m_ByID(C.ID) = C
-    m_ByName(NormName(C.Name)) = C
+    Set m_ByID(C.ID) = C
+    Set m_ByName(NormName(C.Name)) = C
 End Sub
 
 Private Function BuildKEDMap(KEDRows As Variant) As Scripting.Dictionary

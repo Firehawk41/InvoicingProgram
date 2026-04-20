@@ -209,7 +209,7 @@ End Sub
 '   Unload frmAddCustomer
 '
 Private Function ShowAddForm(Optional DefaultName As String = "") As clsCustomer
-    m_Logger.LogInfo "clsCustomerService.ShowAddForm", "UserForm not yet implemented"
+    m_Logger.LogMessage "clsCustomerService.ShowAddForm", LogLevelEnum.LogWarning, "UserForm not yet implemented"
 End Function
 
 Private Sub AssertInit(Src As String)

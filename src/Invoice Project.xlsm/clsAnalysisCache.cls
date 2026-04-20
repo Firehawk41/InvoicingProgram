@@ -70,7 +70,7 @@ Public Sub Build()
     Analyses = m_Repo.SelectAll
 
     ' No analyses in DB is valid — leave the cache empty.
-    If IsEmpty(Analyses) Then Exit Sub
+    If IsNull(Analyses) Then Exit Sub
 
     Dim i As Long
     Dim D As Scripting.Dictionary
@@ -191,8 +191,8 @@ End Function
 ' Private helpers
 ' ----------------------------------------------------------------
 Private Sub StoreInIndex(A As clsAnalysis)
-    m_ByID(A.ID) = A
-    m_ByName(NormName(A.Name)) = A
+    Set m_ByID(A.ID) = A
+    Set m_ByName(NormName(A.Name)) = A
 End Sub
 
 Private Function NormName(V As String) As String

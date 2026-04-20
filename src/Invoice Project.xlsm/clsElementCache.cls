@@ -69,7 +69,7 @@ Public Sub Build()
     Elements = m_Repo.SelectAll
 
     ' No elements in DB is valid — leave the cache empty.
-    If IsEmpty(Elements) Then Exit Sub
+    If IsNull(Elements) Then Exit Sub
 
     Dim i As Long
     Dim D As Scripting.Dictionary
@@ -231,9 +231,9 @@ End Function
 ' Private helpers
 ' ----------------------------------------------------------------
 Private Sub StoreInIndex(E As clsElement)
-    m_ByID(E.ID) = E
-    m_ByName(NormName(E.Name)) = E
-    m_BySymbol(NormName(E.Symbol)) = E
+    Set m_ByID(E.ID) = E
+    Set m_ByName(NormName(E.Name)) = E
+    Set m_BySymbol(NormName(E.Symbol)) = E
 End Sub
 
 Private Function NormName(V As String) As String
