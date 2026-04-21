@@ -66,7 +66,7 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
     m_Cache.Initialize m_Repo, Logger      ' Cache.Build() is called inside Initialize
 
     Exit Sub
-EH:                                 HandleError "Initialize", "Failed"
+EH:                                         HandleError "Initialize", "Failed"
 End Sub
 
 ' ----------------------------------------------------------------
@@ -101,7 +101,10 @@ Public Function AllChemicals() As Collection
     AssertInit "AllChemicals"
     Set AllChemicals = m_Cache.AllChemicals
 End Function
-
+Public Function GetIDByFormName(FormName As String) As Long
+    AssertInit "GetIDByFormName"
+    GetIDByFormName = m_Cache.GetIDByFormName(FormName)
+End Function
 ' ----------------------------------------------------------------
 ' GetOrPrompt  —  lookup with add-on-miss (used during invoice entry)
 ' Returns Nothing if not found AND the user declines to add.
@@ -143,7 +146,7 @@ Public Function CreateChemical(D As Scripting.Dictionary) As clsChemical
     SaveChemical C
     Set CreateChemical = C
     Exit Function
-EH:                                 HandleError "CreateChemical", "Failed on: " & D("chemical_name")
+EH:                                         HandleError "CreateChemical", "Failed on: " & D("chemical_name")
 End Function
 
 Public Sub SaveChemical(C As clsChemical)
@@ -161,7 +164,7 @@ Public Sub SaveChemical(C As clsChemical)
 
     m_Cache.Upsert C                ' incremental update — no full rebuild
     Exit Sub
-EH:                                 HandleError "SaveChemical", "Failed on: " & C.Name
+EH:                                         HandleError "SaveChemical", "Failed on: " & C.Name
 End Sub
 
 Public Sub DeleteChemical(ChemicalID As Long)
@@ -172,7 +175,7 @@ Public Sub DeleteChemical(ChemicalID As Long)
     m_Repo.Delete ChemicalID
     m_Cache.Remove ChemicalID
     Exit Sub
-EH:                                 HandleError "DeleteChemical", "Failed on ID: " & ChemicalID
+EH:                                         HandleError "DeleteChemical", "Failed on ID: " & ChemicalID
 End Sub
 
 ' ----------------------------------------------------------------

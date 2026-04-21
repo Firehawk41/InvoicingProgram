@@ -86,7 +86,7 @@ Public Sub Build()
     Next i
 
     Exit Sub
-EH:                             HandleError "Build", "Failed at row " & i
+EH:                                     HandleError "Build", "Failed at row " & i
 End Sub
 
 ' ----------------------------------------------------------------
@@ -109,7 +109,7 @@ Public Sub Upsert(C As clsCustomer)
 
     StoreInIndex C
     Exit Sub
-EH:                             HandleError "Upsert", "Failed on ID: " & C.ID
+EH:                                     HandleError "Upsert", "Failed on ID: " & C.ID
 End Sub
 
 Public Sub Remove(CustomerID As Long)
@@ -124,7 +124,7 @@ Public Sub Remove(CustomerID As Long)
         m_ByID.Remove CustomerID
     End If
     Exit Sub
-EH:                             HandleError "Remove", "Failed on ID: " & CustomerID
+EH:                                     HandleError "Remove", "Failed on ID: " & CustomerID
 End Sub
 
 ' ----------------------------------------------------------------

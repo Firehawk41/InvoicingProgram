@@ -43,7 +43,7 @@ Private m_Logger As clsLoggingSystem
 Private m_Repo   As clsChemicalRepository
 Private m_ByID   As Scripting.Dictionary   ' Long      -> clsChemical
 Private m_ByName As Scripting.Dictionary   ' LCase key -> clsChemical
-
+Private m_ByFormName As Scripting.Dictionary  ' form_name -> Long (single chemical ID)
 ' ----------------------------------------------------------------
 ' Initialization
 ' ----------------------------------------------------------------
@@ -56,6 +56,7 @@ Public Sub Initialize(Repo As clsChemicalRepository, Logger As clsLoggingSystem)
     Set m_Repo = Repo
     Set m_ByID = New Scripting.Dictionary
     Set m_ByName = New Scripting.Dictionary
+    Set m_ByFormName = New Scripting.Dictionary
 
     Build
 End Sub
@@ -110,8 +111,31 @@ Public Sub Build()
         StoreInIndex C
     Next i
 
+
+    Dim FormRows As Variant
+    FormRows = m_Repo.SelectAllFormChemicals()
+
+    If Not IsEmpty(FormRows) Then
+        Dim j As Long
+        For j = LBound(FormRows, 2) To UBound(FormRows, 2)
+            Dim FormName As String
+            FormName = NullToDefault(FormRows(0, j), "")
+            If FormName = "" Then GoTo NextRow
+
+            Dim ChemicalID As Long
+            ChemicalID = NullToDefault(FormRows(1, j), 0)
+            If ChemicalID = 0 Then GoTo NextRow
+
+            If Not m_ByFormName.Exists(FormName) Then
+                m_ByFormName.Add FormName, ChemicalID
+            End If
+
+NextRow:
+        Next j
+    End If
+
     Exit Sub
-EH:                                 HandleError "Build", "Failed at row " & i
+EH:                                         HandleError "Build", "Failed at row " & i
 End Sub
 
 ' ----------------------------------------------------------------
@@ -134,7 +158,7 @@ Public Sub Upsert(C As clsChemical)
 
     StoreInIndex C
     Exit Sub
-EH:                                 HandleError "Upsert", "Failed on ID: " & C.ID
+EH:                                         HandleError "Upsert", "Failed on ID: " & C.ID
 End Sub
 
 Public Sub Remove(ChemicalID As Long)
@@ -149,7 +173,7 @@ Public Sub Remove(ChemicalID As Long)
         m_ByID.Remove ChemicalID
     End If
     Exit Sub
-EH:                                 HandleError "Remove", "Failed on ID: " & ChemicalID
+EH:                                         HandleError "Remove", "Failed on ID: " & ChemicalID
 End Sub
 
 ' ----------------------------------------------------------------
@@ -206,7 +230,16 @@ Public Function AllChemicals() As Collection
     Next Key
     Set AllChemicals = Coll
 End Function
+Public Function GetIDByFormName(FormName As String) As Long
+    Dim NormName As String
+    NormName = LCase(Trim(FormName))
 
+    If m_ByFormName.Exists(NormName) Then
+        GetIDByFormName = m_ByFormName(NormName)
+    Else
+        GetIDByFormName = 0  ' sentinel — caller checks for zero
+    End If
+End Function
 ' ----------------------------------------------------------------
 ' Private helpers
 ' ----------------------------------------------------------------

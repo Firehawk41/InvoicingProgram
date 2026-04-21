@@ -125,7 +125,7 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     End If
 
     Exit Sub
-EH:                                 HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
+EH:                                         HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
 End Sub
 
 ' ----------------------------------------------------------------
@@ -148,7 +148,7 @@ Public Function ToRecord() As Scripting.Dictionary
     D.Add "ked_elements", CopyDict(m_KEDElementIDs)
     Set ToRecord = D
     Exit Function
-EH:                                 HandleError "ToRecord", "Failed to export chemical: " & m_Name
+EH:                                         HandleError "ToRecord", "Failed to export chemical: " & m_Name
 End Function
 
 ' ----------------------------------------------------------------
@@ -171,7 +171,7 @@ Friend Sub SetInternalID(NewID As Long)
             m_ID = NewID
 
             Exit Sub
-EH:                                                                                                 HandleError "SetInternalID", "Failed to set ID: " & NewID & " for chemical: " & m_Name
+EH:                                                                                                                         HandleError "SetInternalID", "Failed to set ID: " & NewID & " for chemical: " & m_Name
         End Sub
 
         ' ----------------------------------------------------------------

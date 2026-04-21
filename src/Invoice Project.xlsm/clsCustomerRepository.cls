@@ -53,7 +53,7 @@ Public Function SelectAll() As Variant
         "FROM customers " & _
         "ORDER BY customer_name")
     Exit Function
-EH:                             HandleError "SelectAll", "Failed"
+EH:                                     HandleError "SelectAll", "Failed"
 End Function
 
 ' ----------------------------------------------------------------
@@ -78,7 +78,7 @@ Public Function Insert(C As clsCustomer) As Long
 
     Insert = m_AccessDB.ExecuteInsert(SQL)
     Exit Function
-EH:                             HandleError "Insert", "Failed on: " & C.Name
+EH:                                     HandleError "Insert", "Failed on: " & C.Name
 End Function
 
 Public Sub Update(C As clsCustomer)
@@ -98,7 +98,7 @@ Public Sub Update(C As clsCustomer)
 
     m_AccessDB.ExecuteNonQuery SQL
     Exit Sub
-EH:                             HandleError "Update", "Failed on ID: " & C.ID
+EH:                                     HandleError "Update", "Failed on ID: " & C.ID
 End Sub
 
 Public Sub Delete(CustomerID As Long)
@@ -109,7 +109,7 @@ Public Sub Delete(CustomerID As Long)
     m_AccessDB.ExecuteNonQuery _
         "DELETE FROM customers WHERE ID = " & CustomerID
     Exit Sub
-EH:                             HandleError "Delete", "Failed on ID: " & CustomerID
+EH:                                     HandleError "Delete", "Failed on ID: " & CustomerID
 End Sub
 
 ' ----------------------------------------------------------------

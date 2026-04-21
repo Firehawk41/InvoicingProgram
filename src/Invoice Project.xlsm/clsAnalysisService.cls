@@ -57,7 +57,7 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
     m_Cache.Initialize m_Repo, Logger      ' Cache.Build() is called inside Initialize
 
     Exit Sub
-EH:                         HandleError "Initialize", "Failed"
+EH:                                 HandleError "Initialize", "Failed"
 End Sub
 
 ' ----------------------------------------------------------------
@@ -77,7 +77,9 @@ Public Function AllAnalyses() As Collection
     AssertInit "AllAnalyses"
     Set AllAnalyses = m_Cache.AllAnalyses
 End Function
-
+Public Function GetIDsByFormName(FormName As String) As Collection
+    Set GetIDsByFormName = m_Cache.GetIDsByFormName(FormName)
+End Function
 ' ----------------------------------------------------------------
 ' Writes
 ' ----------------------------------------------------------------
@@ -96,7 +98,7 @@ Public Function CreateAnalysis(D As Scripting.Dictionary) As clsAnalysis
     SaveAnalysis A
     Set CreateAnalysis = A
     Exit Function
-EH:                         HandleError "CreateAnalysis", "Failed on: " & D("analysis_name")
+EH:                                 HandleError "CreateAnalysis", "Failed on: " & D("analysis_name")
 End Function
 
 Public Sub SaveAnalysis(A As clsAnalysis)
@@ -114,7 +116,7 @@ Public Sub SaveAnalysis(A As clsAnalysis)
 
     m_Cache.Upsert A                ' incremental update — no full rebuild
     Exit Sub
-EH:                         HandleError "SaveAnalysis", "Failed on: " & A.Name
+EH:                                 HandleError "SaveAnalysis", "Failed on: " & A.Name
 End Sub
 
 Public Sub DeleteAnalysis(AnalysisID As Long)
@@ -125,7 +127,7 @@ Public Sub DeleteAnalysis(AnalysisID As Long)
     m_Repo.Delete AnalysisID
     m_Cache.Remove AnalysisID
     Exit Sub
-EH:                         HandleError "DeleteAnalysis", "Failed on ID: " & AnalysisID
+EH:                                 HandleError "DeleteAnalysis", "Failed on ID: " & AnalysisID
 End Sub
 
 ' ----------------------------------------------------------------

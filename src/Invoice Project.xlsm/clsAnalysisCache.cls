@@ -38,7 +38,7 @@ Private m_Logger As clsLoggingSystem
 Private m_Repo   As clsAnalysisRepository
 Private m_ByID   As Scripting.Dictionary   ' Long      -> clsAnalysis
 Private m_ByName As Scripting.Dictionary   ' LCase key -> clsAnalysis
-
+Private m_ByFormName As Scripting.Dictionary  ' form_name -> Collection of Long (analysis IDs)
 ' ----------------------------------------------------------------
 ' Initialization
 ' ----------------------------------------------------------------
@@ -51,6 +51,7 @@ Public Sub Initialize(Repo As clsAnalysisRepository, Logger As clsLoggingSystem)
     Set m_Repo = Repo
     Set m_ByID = New Scripting.Dictionary
     Set m_ByName = New Scripting.Dictionary
+    Set m_ByFormName = New Scripting.Dictionary
 
     Build
 End Sub
@@ -90,8 +91,30 @@ Public Sub Build()
         StoreInIndex A
     Next i
 
+    Dim FormRows As Variant
+    FormRows = m_Repo.SelectAllFormAnalyses()
+
+    If Not IsEmpty(FormRows) Then
+        Dim j As Long
+        For j = LBound(FormRows, 2) To UBound(FormRows, 2)
+            Dim FormName As String
+            FormName = NullToDefault(FormRows(0, j), "")
+            If FormName = "" Then GoTo NextRow
+
+            Dim AnalysisID As Long
+            AnalysisID = NullToDefault(FormRows(1, j), 0)
+            If AnalysisID = 0 Then GoTo NextRow
+
+            If Not m_ByFormName.Exists(FormName) Then
+                m_ByFormName.Add FormName, New Collection
+            End If
+            m_ByFormName(FormName).Add AnalysisID
+NextRow:
+        Next j
+    End If
+
     Exit Sub
-EH:                         HandleError "Build", "Failed at row " & i
+EH:                                 HandleError "Build", "Failed at row " & i
 End Sub
 
 ' ----------------------------------------------------------------
@@ -114,7 +137,7 @@ Public Sub Upsert(A As clsAnalysis)
 
     StoreInIndex A
     Exit Sub
-EH:                         HandleError "Upsert", "Failed on ID: " & A.ID
+EH:                                 HandleError "Upsert", "Failed on ID: " & A.ID
 End Sub
 
 Public Sub Remove(AnalysisID As Long)
@@ -129,7 +152,7 @@ Public Sub Remove(AnalysisID As Long)
         m_ByID.Remove AnalysisID
     End If
     Exit Sub
-EH:                         HandleError "Remove", "Failed on ID: " & AnalysisID
+EH:                                 HandleError "Remove", "Failed on ID: " & AnalysisID
 End Sub
 
 ' ----------------------------------------------------------------
@@ -186,7 +209,20 @@ Public Function AllAnalyses() As Collection
     Next Key
     Set AllAnalyses = Coll
 End Function
+' Returns a Collection of Long analysis IDs for a form name.
+' Returns an empty Collection if the form name is not found.
+Public Function GetIDsByFormName(FormName As String) As Collection
+    AssertInit "GetIDsByFormName"
 
+    Dim NormName As String
+    NormName = LCase(Trim(FormName))
+
+    If m_ByFormName.Exists(NormName) Then
+        Set GetIDsByFormName = m_ByFormName(NormName)
+    Else
+        Set GetIDsByFormName = New Collection
+    End If
+End Function
 ' ----------------------------------------------------------------
 ' Private helpers
 ' ----------------------------------------------------------------

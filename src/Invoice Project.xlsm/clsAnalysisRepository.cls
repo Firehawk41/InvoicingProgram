@@ -61,9 +61,26 @@ Public Function SelectAll() As Variant
         "FROM   analyses " & _
         "ORDER BY analysis_name")
     Exit Function
-EH:                         HandleError "SelectAll", "Failed"
+EH:                                 HandleError "SelectAll", "Failed"
 End Function
+' ----------------------------------------------------------------
+' Form analysis lookup  (called ONLY by clsAnalysisCache)
+' Returns 2D array: col 0 = form_name, col 1 = analysis_id
+' Returns Empty if table is empty
+' ----------------------------------------------------------------
+Public Function SelectAllFormAnalyses() As Variant
+    AssertInit "SelectAllFormAnalyses"
+    If Not m_Logger.DebugMode Then On Error GoTo EH
 
+    SelectAllFormAnalyses = m_AccessDB.ExecuteQuery( _
+        "SELECT fa.form_analysis_name, fam.database_analysis_id " & _
+        "FROM   form_analyses fa " & _
+        "INNER JOIN form_analysis_mapping fam " & _
+        "    ON fa.form_analysis_id = fam.form_analysis_id " & _
+        "ORDER BY fa.form_analysis_name")
+    Exit Function
+EH:                 HandleError "SelectAllFormAnalyses", "Failed"
+End Function
 ' ----------------------------------------------------------------
 ' Writes
 ' ----------------------------------------------------------------
@@ -82,7 +99,7 @@ Public Function Insert(A As clsAnalysis) As Long
 
     Insert = m_AccessDB.ExecuteInsert(SQL)
     Exit Function
-EH:                         HandleError "Insert", "Failed on: " & A.Name
+EH:                                 HandleError "Insert", "Failed on: " & A.Name
 End Function
 
 Public Sub Update(A As clsAnalysis)
@@ -99,7 +116,7 @@ Public Sub Update(A As clsAnalysis)
 
     m_AccessDB.ExecuteNonQuery SQL
     Exit Sub
-EH:                         HandleError "Update", "Failed on ID: " & A.ID
+EH:                                 HandleError "Update", "Failed on ID: " & A.ID
 End Sub
 
 Public Sub Delete(AnalysisID As Long)
@@ -110,7 +127,7 @@ Public Sub Delete(AnalysisID As Long)
     m_AccessDB.ExecuteNonQuery _
         "DELETE FROM analyses WHERE ID = " & AnalysisID
     Exit Sub
-EH:                         HandleError "Delete", "Failed on ID: " & AnalysisID
+EH:                                 HandleError "Delete", "Failed on ID: " & AnalysisID
 End Sub
 
 ' ----------------------------------------------------------------

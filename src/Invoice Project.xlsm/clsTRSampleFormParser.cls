@@ -100,7 +100,7 @@ Public Function BuildFromRow(SampleCell As Range, _
 
     Set BuildFromRow = S
     Exit Function
-EH:                         HandleError "BuildFromRow", "Row: " & SampleCell.Row
+EH:                                 HandleError "BuildFromRow", "Row: " & SampleCell.Row
 End Function
 
 ' ----------------------------------------------------------------
@@ -158,8 +158,13 @@ Private Sub AddAnalysesFromRow(S As clsTRSample, _
 
     For Each Cell In SampleRow.Cells
         If Not IsEmpty(Cell) And Len(Trim$(CStr(Cell.Value))) > 0 Then
-            Set A = m_AnalysisSvc.GetByName(CStr(Cell.Value))
-            If Not A Is Nothing Then S.AddAnalysis A.ID
+            Dim AnalysisIDs As Collection
+            Set AnalysisIDs = m_AnalysisSvc.GetIDsByFormName(CellValue)
+
+            Dim ID As Variant
+            For Each ID In AnalysisIDs
+                Sample.AddAnalysis CLng(ID)
+            Next ID
         End If
     Next Cell
 
