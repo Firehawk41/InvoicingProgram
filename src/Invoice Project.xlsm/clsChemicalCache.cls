@@ -135,7 +135,7 @@ NextRow:
     End If
 
     Exit Sub
-EH:                                         HandleError "Build", "Failed at row " & i
+EH:                                             HandleError "Build", "Failed at row " & i
 End Sub
 
 ' ----------------------------------------------------------------
@@ -158,7 +158,7 @@ Public Sub Upsert(C As clsChemical)
 
     StoreInIndex C
     Exit Sub
-EH:                                         HandleError "Upsert", "Failed on ID: " & C.ID
+EH:                                             HandleError "Upsert", "Failed on ID: " & C.ID
 End Sub
 
 Public Sub Remove(ChemicalID As Long)
@@ -173,7 +173,7 @@ Public Sub Remove(ChemicalID As Long)
         m_ByID.Remove ChemicalID
     End If
     Exit Sub
-EH:                                         HandleError "Remove", "Failed on ID: " & ChemicalID
+EH:                                             HandleError "Remove", "Failed on ID: " & ChemicalID
 End Sub
 
 ' ----------------------------------------------------------------

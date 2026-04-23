@@ -60,7 +60,7 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, _
     m_FormParser.Initialize AccessDB, CustomerSvc, ChemicalSvc, AnalysisSvc, ElementSvc, Logger
 
     Exit Sub
-EH:                                 HandleError "Initialize", "Failed"
+EH:                                     HandleError "Initialize", "Failed"
 End Sub
 
 ' ----------------------------------------------------------------
@@ -81,7 +81,7 @@ Public Function BuildFromWorksheet(WkS As Worksheet) As clsTRSubmission
 
     Set BuildFromWorksheet = Sub_
     Exit Function
-EH:                                 HandleError "BuildFromWorksheet", "File: " & WkS.Parent.Name
+EH:                                     HandleError "BuildFromWorksheet", "File: " & WkS.Parent.Name
 End Function
 
 ' ----------------------------------------------------------------

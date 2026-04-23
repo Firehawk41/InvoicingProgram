@@ -53,9 +53,24 @@ Public Function SelectAll() As Variant
         "FROM customers " & _
         "ORDER BY customer_name")
     Exit Function
-EH:                                     HandleError "SelectAll", "Failed"
+EH:                                         HandleError "SelectAll", "Failed"
 End Function
+' ----------------------------------------------------------------
+' Form customer lookup  (called ONLY by clsCustomerCache)
+' Returns 2D array: col 0 = form_customer, col 1 = form_address, col 2 = customer_id
+' Returns Empty if table is empty
+' ----------------------------------------------------------------
+Public Function SelectAllFormCustomers() As Variant
+    AssertInit "SelectAllFormCustomers"
+    If Not m_Logger.DebugMode Then On Error GoTo EH
 
+    SelectAllFormCustomers = m_AccessDB.ExecuteQuery( _
+        "SELECT form_customer, form_address, customer_id " & _
+        "FROM   form_customers " & _
+        "ORDER BY form_customer_name")
+    Exit Function
+EH:                 HandleError "SelectAllFormCustomers", "Failed"
+End Function
 ' ----------------------------------------------------------------
 ' Writes
 ' ----------------------------------------------------------------
@@ -78,7 +93,7 @@ Public Function Insert(C As clsCustomer) As Long
 
     Insert = m_AccessDB.ExecuteInsert(SQL)
     Exit Function
-EH:                                     HandleError "Insert", "Failed on: " & C.Name
+EH:                                         HandleError "Insert", "Failed on: " & C.Name
 End Function
 
 Public Sub Update(C As clsCustomer)
@@ -98,7 +113,7 @@ Public Sub Update(C As clsCustomer)
 
     m_AccessDB.ExecuteNonQuery SQL
     Exit Sub
-EH:                                     HandleError "Update", "Failed on ID: " & C.ID
+EH:                                         HandleError "Update", "Failed on ID: " & C.ID
 End Sub
 
 Public Sub Delete(CustomerID As Long)
@@ -109,7 +124,7 @@ Public Sub Delete(CustomerID As Long)
     m_AccessDB.ExecuteNonQuery _
         "DELETE FROM customers WHERE ID = " & CustomerID
     Exit Sub
-EH:                                     HandleError "Delete", "Failed on ID: " & CustomerID
+EH:                                         HandleError "Delete", "Failed on ID: " & CustomerID
 End Sub
 
 ' ----------------------------------------------------------------

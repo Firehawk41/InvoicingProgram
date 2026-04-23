@@ -100,7 +100,7 @@ Public Function BuildFromRow(SampleCell As Range, _
 
     Set BuildFromRow = S
     Exit Function
-EH:                                 HandleError "BuildFromRow", "Row: " & SampleCell.Row
+EH:                                     HandleError "BuildFromRow", "Row: " & SampleCell.Row
 End Function
 
 ' ----------------------------------------------------------------

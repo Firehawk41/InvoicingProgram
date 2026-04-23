@@ -58,7 +58,7 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
     m_Cache.Initialize m_Repo, Logger      ' Cache.Build() is called inside Initialize
 
     Exit Sub
-EH:                                     HandleError "Initialize", "Failed"
+EH:                                         HandleError "Initialize", "Failed"
 End Sub
 
 ' ----------------------------------------------------------------
@@ -78,7 +78,10 @@ Public Function AllCustomers() As Collection
     AssertInit "AllCustomers"
     Set AllCustomers = m_Cache.AllCustomers
 End Function
-
+Public Function GetIDByFormName(FormName As String) As Long
+    AssertInit "GetIDByFormName"
+    GetIDByFormName = m_Cache.GetIDByFormName(FormName)
+End Function
 ' ----------------------------------------------------------------
 ' GetOrPrompt  —  lookup with add-on-miss (used during data entry)
 ' Returns Nothing if not found AND the user declines to add.
@@ -121,7 +124,7 @@ Public Function CreateCustomer(D As Scripting.Dictionary) As clsCustomer
     SaveCustomer C
     Set CreateCustomer = C
     Exit Function
-EH:                                     HandleError "CreateCustomer", "Failed on: " & D("customer_name")
+EH:                                         HandleError "CreateCustomer", "Failed on: " & D("customer_name")
 End Function
 
 Public Sub SaveCustomer(C As clsCustomer)
@@ -139,7 +142,7 @@ Public Sub SaveCustomer(C As clsCustomer)
 
     m_Cache.Upsert C                ' incremental update — no full rebuild
     Exit Sub
-EH:                                     HandleError "SaveCustomer", "Failed on: " & C.Name
+EH:                                         HandleError "SaveCustomer", "Failed on: " & C.Name
 End Sub
 
 Public Sub DeleteCustomer(CustomerID As Long)
@@ -150,7 +153,7 @@ Public Sub DeleteCustomer(CustomerID As Long)
     m_Repo.Delete CustomerID
     m_Cache.Remove CustomerID
     Exit Sub
-EH:                                     HandleError "DeleteCustomer", "Failed on ID: " & CustomerID
+EH:                                         HandleError "DeleteCustomer", "Failed on ID: " & CustomerID
 End Sub
 
 ' ----------------------------------------------------------------

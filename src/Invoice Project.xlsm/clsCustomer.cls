@@ -114,7 +114,7 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     m_Country = CStr(D("country"))
 
     Exit Sub
-EH:                                     HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
+EH:                                         HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
 End Sub
 
 ' ----------------------------------------------------------------
@@ -133,7 +133,7 @@ Public Function ToRecord() As Scripting.Dictionary
     D.Add "country", m_Country
     Set ToRecord = D
     Exit Function
-EH:                                     HandleError "ToRecord", "Failed to export customer: " & m_Name
+EH:                                         HandleError "ToRecord", "Failed to export customer: " & m_Name
 End Function
 
 ' ----------------------------------------------------------------
@@ -155,7 +155,7 @@ Friend Sub SetInternalID(NewID As Long)
 
             m_ID = NewID
             Exit Sub
-EH:                                                                                                             HandleError "SetInternalID", "Failed to set ID: " & NewID & " for customer: " & m_Name
+EH:                                                                                                                         HandleError "SetInternalID", "Failed to set ID: " & NewID & " for customer: " & m_Name
         End Sub
 
         ' ----------------------------------------------------------------

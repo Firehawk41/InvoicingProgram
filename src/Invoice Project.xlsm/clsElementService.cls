@@ -55,7 +55,7 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
     m_Cache.Initialize m_Repo, Logger      ' Cache.Build() is called inside Initialize
 
     Exit Sub
-EH:                                 HandleError "Initialize", "Failed"
+EH:                                     HandleError "Initialize", "Failed"
 End Sub
 
 ' ----------------------------------------------------------------
@@ -101,7 +101,7 @@ Public Function CreateElement(D As Scripting.Dictionary) As clsElement
     SaveElement E
     Set CreateElement = E
     Exit Function
-EH:                                 HandleError "CreateElement", "Failed on: " & D("element_symbol")
+EH:                                     HandleError "CreateElement", "Failed on: " & D("element_symbol")
 End Function
 
 Public Sub SaveElement(E As clsElement)
@@ -119,7 +119,7 @@ Public Sub SaveElement(E As clsElement)
 
     m_Cache.Upsert E                ' incremental update — no full rebuild
     Exit Sub
-EH:                                 HandleError "SaveElement", "Failed on: " & E.Symbol
+EH:                                     HandleError "SaveElement", "Failed on: " & E.Symbol
 End Sub
 
 Public Sub DeleteElement(ElementID As Long)
@@ -130,7 +130,7 @@ Public Sub DeleteElement(ElementID As Long)
     m_Repo.Delete ElementID
     m_Cache.Remove ElementID
     Exit Sub
-EH:                                 HandleError "DeleteElement", "Failed on ID: " & ElementID
+EH:                                     HandleError "DeleteElement", "Failed on ID: " & ElementID
 End Sub
 
 ' ----------------------------------------------------------------

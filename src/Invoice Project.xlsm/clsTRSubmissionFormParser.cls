@@ -120,7 +120,7 @@ Public Function BuildFromWorksheet(WkS As Worksheet) As clsTRSubmission
 
     Set BuildFromWorksheet = Sub_
     Exit Function
-EH:                                 HandleError "BuildFromWorksheet", "File: " & WkS.Parent.Name
+EH:                                     HandleError "BuildFromWorksheet", "File: " & WkS.Parent.Name
 End Function
 
 ' ----------------------------------------------------------------

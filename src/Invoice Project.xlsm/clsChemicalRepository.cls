@@ -68,7 +68,7 @@ Public Function SelectAll() As Variant
                 "FROM chemicals " & _
                 "ORDER BY chemical_name")
     Exit Function
-EH:                                         HandleError "SelectAll", "Failed"
+EH:                                             HandleError "SelectAll", "Failed"
 End Function
 
 Public Function SelectAllKEDElements() As Variant
@@ -80,7 +80,7 @@ Public Function SelectAllKEDElements() As Variant
         "FROM   ked_elements " & _
         "ORDER BY chemical_id")
     Exit Function
-EH:                                         HandleError "SelectAllKEDElements", "Failed"
+EH:                                             HandleError "SelectAllKEDElements", "Failed"
 End Function
 Public Function SelectAllFormChemicals() As Variant
     ' Returns 2D array: col 0 = form_name, col 1 = chemical_id

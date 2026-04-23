@@ -131,7 +131,7 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     m_SubmissionRef = CStr(D("submission_ref"))
 
     Exit Sub
-EH:                                 HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
+EH:                                     HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
 End Sub
 
 ' ----------------------------------------------------------------
@@ -157,7 +157,7 @@ Public Function ToRecord() As Scripting.Dictionary
     D.Add "submission_ref", m_SubmissionRef
     Set ToRecord = D
     Exit Function
-EH:                                 HandleError "ToRecord", "Failed for file: " & m_FileName
+EH:                                     HandleError "ToRecord", "Failed for file: " & m_FileName
 End Function
 
 ' ----------------------------------------------------------------
@@ -207,7 +207,7 @@ Friend Sub SetInternalID(NewID As Long)
 
             m_ID = NewID
             Exit Sub
-EH:                                                                                                 HandleError "SetInternalID", "Failed to set ID: " & NewID
+EH:                                                                                                             HandleError "SetInternalID", "Failed to set ID: " & NewID
         End Sub
 
         ' ----------------------------------------------------------------
