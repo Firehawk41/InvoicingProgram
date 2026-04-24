@@ -96,11 +96,11 @@ Public Function ResolveCustomer(Name As String, Address As String) As clsCustome
     End If
 
     If Frm.IsNewCustomer Then
-        If m_CustomerSvc.IsUniqueName(Frm.newcustomerdict("customer_name")) Then
-            Set ResolveCustomer = m_CustomerSvc.CreateCustomer(Frm.newcustomerdict)
+        If m_CustomerSvc.IsUniqueName(Frm.NewCustomerDict("customer_name")) Then
+            Set ResolveCustomer = m_CustomerSvc.CreateCustomer(Frm.NewCustomerDict)
             Exit Function
         Else
-            Frm.showvalidationerror "Customer name already exists"
+            Frm.ShowValidationError "Customer name already exists"
             Frm.Show
         End If
     Else
@@ -139,11 +139,11 @@ Public Function ResolveChemical(Name As String) As clsChemical
         End If
         
         If Frm.IsNewChemical Then
-            If m_CustomerSvc.IsUniqueName(Frm.newcustomerdict("chemical_name")) Then
+            If m_CustomerSvc.IsUniqueName(Frm.NewCustomerDict("chemical_name")) Then
                 Set ResolveChemical = m_ChemicalSvc.CreateChemical(Frm.NewChemicalDict)
                 Exit Function
             Else
-                Frm.showvalidationerror "Chemical name already exists"
+                Frm.ShowValidationError "Chemical name already exists"
                 Frm.Show
             End If
             

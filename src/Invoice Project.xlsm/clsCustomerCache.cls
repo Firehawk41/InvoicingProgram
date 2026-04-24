@@ -50,203 +50,207 @@ End Sub
 ' ----------------------------------------------------------------
 ' Build  â€”  full rebuild from Repo
 ' ----------------------------------------------------------------
+
 Public Sub Build()
-    Public Sub Build()
-        AssertInit "Build"
-        If Not m_Logger.DebugMode Then On Error GoTo EH
+    AssertInit "Build"
+    If Not m_Logger.DebugMode Then On Error GoTo EH
 
-        m_ByID.RemoveAll
-        m_ByName.RemoveAll
-        m_ByFormCustomer.RemoveAll
+    m_ByID.RemoveAll
+    m_ByName.RemoveAll
+    m_ByFormCustomer.RemoveAll
 
-        ' -------------------------------------------------------
-        ' Main customer index
-        ' -------------------------------------------------------
-        Dim Customers As Variant
-        Customers = m_Repo.SelectAll
+    ' -------------------------------------------------------
+    ' Main customer index
+    ' -------------------------------------------------------
+    Dim Customers As Variant
+    Customers = m_Repo.SelectAll
 
-        ' No customers in DB is valid — leave the cache empty.
-        If IsEmpty(Customers) Then Exit Sub
+    ' No customers in DB is valid — leave the cache empty.
+    If IsEmpty(Customers) Then Exit Sub
 
-        Dim i As Long
-        Dim D As Scripting.Dictionary
-        Dim C As clsCustomer
+    Dim i As Long
+    Dim D As Scripting.Dictionary
+    Dim C As clsCustomer
 
-        ' SelectAll column order: 0=ID, 1=name, 2=street_address,
-        '                         3=city, 4=postal_code, 5=country
-        For i = LBound(Customers, 2) To UBound(Customers, 2)
-            Set D = New Scripting.Dictionary
-            D.Add "customer_id", NullToDefault(Customers(0, i), 0)
-            D.Add "customer_name", NullToDefault(Customers(1, i), "")
-            D.Add "street_address", NullToDefault(Customers(2, i), "")
-            D.Add "city", NullToDefault(Customers(3, i), "")
-            D.Add "postal_code", NullToDefault(Customers(4, i), "")
-            D.Add "country", NullToDefault(Customers(5, i), "")
-            Set C = New clsCustomer
-            C.Initialize m_Logger
-            C.LoadFromDict D
-            StoreInIndex C
-        Next i
-
-        ' -------------------------------------------------------
-        ' Form customer index — form_name + address -> customer_id
-        ' -------------------------------------------------------
-        Dim FormCustomers As Variant
-        FormCustomers = m_Repo.SelectAllFormCustomers
-
-        ' No form mappings is valid — leave the form index empty.
-        If IsEmpty(FormCustomers) Then Exit Sub
-
-        Dim j As Long
-        Dim FormName    As String
-        Dim FormAddress As String
-        Dim CustomerID  As Long
-        Dim Key         As String
-
-        ' SelectAllFormCustomers column order:
-        '   0=form_customer_name, 1=form_address, 2=customer_id
-        For j = LBound(FormCustomers, 2) To UBound(FormCustomers, 2)
-            FormName = NullToDefault(FormCustomers(0, j), "")
-            FormAddress = NullToDefault(FormCustomers(1, j), "")
-            CustomerID = NullToDefault(FormCustomers(2, j), 0)
-
-            ' Skip malformed rows
-            If FormName = "" Or CustomerID = 0 Then GoTo NextRow
-
-            Key = BuildCustomerKey(FormName, FormAddress)
-
-            ' Duplicate keys indicate a data problem — log and skip
-            If m_ByFormCustomer.Exists(Key) Then
-                m_Logger.LogMessage "clsCustomerCache.Build", LogWarning, "Duplicate form customer key skipped: " & Key
-                GoTo NextRow
-            End If
-
-            m_ByFormCustomer.Add Key, CustomerID
-NextRow:
-        Next j
-
-        Exit Sub
-EH:                                 HandleError "Build", "Failed at row " & i & j
-    End Sub
-
-    ' ----------------------------------------------------------------
-    ' Incremental updates  (called by Service after each write)
-    ' ----------------------------------------------------------------
-    Public Sub Upsert(C As clsCustomer)
-        AssertInit "Upsert"
-        Debug.Assert Not C Is Nothing
-        Debug.Assert C.ID > 0
-        If Not m_Logger.DebugMode Then On Error GoTo EH
-
-        ' Remove stale name key if the customer was renamed.
-        If m_ByID.Exists(C.ID) Then
-            Dim OldKey As String
-            OldKey = NormName(m_ByID(C.ID).Name)
-            If OldKey <> NormName(C.Name) Then
-                If m_ByName.Exists(OldKey) Then m_ByName.Remove OldKey
-            End If
-        End If
-
+    ' SelectAll column order: 0=ID, 1=name, 2=street_address,
+    '                         3=city, 4=postal_code, 5=country
+    For i = LBound(Customers, 2) To UBound(Customers, 2)
+        Set D = New Scripting.Dictionary
+        D.Add "customer_id", NullToDefault(Customers(0, i), 0)
+        D.Add "customer_name", NullToDefault(Customers(1, i), "")
+        D.Add "street_address", NullToDefault(Customers(2, i), "")
+        D.Add "city", NullToDefault(Customers(3, i), "")
+        D.Add "state", NullToDefault(Customers(4, i), "")
+        D.Add "postal_code", NullToDefault(Customers(5, i), "")
+        D.Add "country", NullToDefault(Customers(6, i), "")
+        Set C = New clsCustomer
+        C.Initialize m_Logger
+        C.LoadFromDict D
         StoreInIndex C
-        Exit Sub
-EH:                                             HandleError "Upsert", "Failed on ID: " & C.ID
-    End Sub
+    Next i
 
-    Public Sub Remove(CustomerID As Long)
-        AssertInit "Remove"
-        Debug.Assert CustomerID > 0
-        If Not m_Logger.DebugMode Then On Error GoTo EH
+    ' -------------------------------------------------------
+    ' Form customer index — form_name + address -> customer_id
+    ' -------------------------------------------------------
+    Dim FormCustomers As Variant
+    FormCustomers = m_Repo.SelectAllFormCustomers
 
-        If m_ByID.Exists(CustomerID) Then
-            Dim NameKey As String
-            NameKey = NormName(m_ByID(CustomerID).Name)
-            If m_ByName.Exists(NameKey) Then m_ByName.Remove NameKey
-            m_ByID.Remove CustomerID
+    ' No form mappings is valid — leave the form index empty.
+    If IsEmpty(FormCustomers) Then Exit Sub
+
+    Dim j As Long
+    Dim FormName    As String
+    Dim FormAddress As String
+    Dim CustomerID  As Long
+    Dim Key         As String
+
+    ' SelectAllFormCustomers column order:
+    '   0=form_customer_name, 1=form_address, 2=customer_id
+    For j = LBound(FormCustomers, 2) To UBound(FormCustomers, 2)
+        FormName = NullToDefault(FormCustomers(0, j), "")
+        FormAddress = NullToDefault(FormCustomers(1, j), "")
+        CustomerID = NullToDefault(FormCustomers(2, j), 0)
+
+        ' Skip malformed rows
+        If FormName = "" Or CustomerID = 0 Then GoTo NextRow
+
+        Key = BuildCustomerKey(FormName, FormAddress)
+
+        ' Duplicate keys indicate a data problem — log and skip
+        If m_ByFormCustomer.Exists(Key) Then
+            m_Logger.LogMessage "clsCustomerCache.Build", LogWarning, "Duplicate form customer key skipped: " & Key
+            GoTo NextRow
         End If
-        Exit Sub
-EH:                                             HandleError "Remove", "Failed on ID: " & CustomerID
-    End Sub
 
-    ' ----------------------------------------------------------------
-    ' Read API
-    ' ----------------------------------------------------------------
-    Public Function ExistsByID(CustomerID As Long) As Boolean
-        AssertInit "ExistsByID"
-        ExistsByID = m_ByID.Exists(CustomerID)
-    End Function
+        m_ByFormCustomer.Add Key, CustomerID
+NextRow:
+    Next j
 
-    Public Function ExistsByName(Name As String) As Boolean
-        AssertInit "ExistsByName"
-        ExistsByName = m_ByName.Exists(NormName(Name))
-    End Function
+    Exit Sub
+EH:
+    HandleError "Build", "Failed at row " & i & j
+End Sub
 
-    Public Function GetByID(CustomerID As Long) As clsCustomer
-        AssertInit "GetByID"
-        If m_ByID.Exists(CustomerID) Then Set GetByID = m_ByID(CustomerID)
-    End Function
+' ----------------------------------------------------------------
+' Incremental updates  (called by Service after each write)
+' ----------------------------------------------------------------
+Public Sub Upsert(C As clsCustomer)
+    AssertInit "Upsert"
+    Debug.Assert Not C Is Nothing
+    Debug.Assert C.ID > 0
+    If Not m_Logger.DebugMode Then On Error GoTo EH
 
-    Public Function GetByName(Name As String) As clsCustomer
-        AssertInit "GetByName"
-        Dim Key As String: Key = NormName(Name)
-        If m_ByName.Exists(Key) Then Set GetByName = m_ByName(Key)
-    End Function
-
-    Public Function GetIDByName(Name As String) As Long
-        AssertInit "GetIDByName"
-        Dim Key As String: Key = NormName(Name)
-        If m_ByName.Exists(Key) Then
-            GetIDByName = m_ByName(Key).ID
-        Else
-            Err.Raise vbObjectError + 103, "clsCustomerCache.GetIDByName", _
-            "Customer not found: " & Name
+    ' Remove stale name key if the customer was renamed.
+    If m_ByID.Exists(C.ID) Then
+        Dim OldKey As String
+        OldKey = NormName(m_ByID(C.ID).Name)
+        If OldKey <> NormName(C.Name) Then
+            If m_ByName.Exists(OldKey) Then m_ByName.Remove OldKey
         End If
-    End Function
+    End If
 
-    Public Function GetNameByID(CustomerID As Long) As String
-        AssertInit "GetNameByID"
-        If m_ByID.Exists(CustomerID) Then
-            GetNameByID = m_ByID(CustomerID).Name
-        Else
-            Err.Raise vbObjectError + 103, "clsCustomerCache.GetNameByID", _
-            "Customer ID not found: " & CustomerID
-        End If
-    End Function
+    StoreInIndex C
+    Exit Sub
+EH:
+    HandleError "Upsert", "Failed on ID: " & C.ID
+End Sub
 
-    Public Function AllCustomers() As Collection
-        AssertInit "AllCustomers"
-        Dim Coll As New Collection
-        Dim Key  As Variant
-        For Each Key In m_ByID.Keys
-            Coll.Add m_ByID(Key)
-        Next Key
-        Set AllCustomers = Coll
-    End Function
+Public Sub Remove(CustomerID As Long)
+    AssertInit "Remove"
+    Debug.Assert CustomerID > 0
+    If Not m_Logger.DebugMode Then On Error GoTo EH
 
-    ' ----------------------------------------------------------------
-    ' Private helpers
-    ' ----------------------------------------------------------------
-    Private Sub StoreInIndex(C As clsCustomer)
-        Set m_ByID(C.ID) = C
-        Set m_ByName(NormName(C.Name)) = C
-    End Sub
+    If m_ByID.Exists(CustomerID) Then
+        Dim NameKey As String
+        NameKey = NormName(m_ByID(CustomerID).Name)
+        If m_ByName.Exists(NameKey) Then m_ByName.Remove NameKey
+        m_ByID.Remove CustomerID
+    End If
+    Exit Sub
+EH:
+    HandleError "Remove", "Failed on ID: " & CustomerID
+End Sub
 
-    Private Function NormName(V As String) As String
-        NormName = LCase$(Trim$(V))
-    End Function
-    Private Function NullToDefault(Value As Variant, Default As Variant) As Variant
-        If IsNull(Value) Then
-            NullToDefault = Default
-        Else
-            NullToDefault = Value
-        End If
-    End Function
-    Private Sub AssertInit(Src As String)
-        If m_Logger Is Nothing Then
-            Err.Raise vbObjectError + 1, "clsCustomerCache." & Src, "Not initialized"
-        End If
-    End Sub
+' ----------------------------------------------------------------
+' Read API
+' ----------------------------------------------------------------
+Public Function ExistsByID(CustomerID As Long) As Boolean
+    AssertInit "ExistsByID"
+    ExistsByID = m_ByID.Exists(CustomerID)
+End Function
 
-    Private Sub HandleError(Src As String, Context As String)
-        m_Logger.LogError "clsCustomerCache." & Src, Err.Description & " | " & Context
-        Err.Clear
-    End Sub
+Public Function ExistsByName(Name As String) As Boolean
+    AssertInit "ExistsByName"
+    ExistsByName = m_ByName.Exists(NormName(Name))
+End Function
+
+Public Function GetByID(CustomerID As Long) As clsCustomer
+    AssertInit "GetByID"
+    If m_ByID.Exists(CustomerID) Then Set GetByID = m_ByID(CustomerID)
+End Function
+
+Public Function GetByName(Name As String) As clsCustomer
+    AssertInit "GetByName"
+    Dim Key As String: Key = NormName(Name)
+    If m_ByName.Exists(Key) Then Set GetByName = m_ByName(Key)
+End Function
+
+Public Function GetIDByName(Name As String) As Long
+    AssertInit "GetIDByName"
+    Dim Key As String: Key = NormName(Name)
+    If m_ByName.Exists(Key) Then
+        GetIDByName = m_ByName(Key).ID
+    Else
+        Err.Raise vbObjectError + 103, "clsCustomerCache.GetIDByName", _
+        "Customer not found: " & Name
+    End If
+End Function
+
+Public Function GetNameByID(CustomerID As Long) As String
+    AssertInit "GetNameByID"
+    If m_ByID.Exists(CustomerID) Then
+        GetNameByID = m_ByID(CustomerID).Name
+    Else
+        Err.Raise vbObjectError + 103, "clsCustomerCache.GetNameByID", _
+        "Customer ID not found: " & CustomerID
+    End If
+End Function
+
+Public Function AllCustomers() As Collection
+    AssertInit "AllCustomers"
+    Dim Coll As New Collection
+    Dim Key  As Variant
+    For Each Key In m_ByID.Keys
+        Coll.Add m_ByID(Key)
+    Next Key
+    Set AllCustomers = Coll
+End Function
+
+' ----------------------------------------------------------------
+' Private helpers
+' ----------------------------------------------------------------
+Private Sub StoreInIndex(C As clsCustomer)
+    Set m_ByID(C.ID) = C
+    Set m_ByName(NormName(C.Name)) = C
+End Sub
+
+Private Function NormName(V As String) As String
+    NormName = LCase$(Trim$(V))
+End Function
+Private Function NullToDefault(Value As Variant, Default As Variant) As Variant
+    If IsNull(Value) Then
+        NullToDefault = Default
+    Else
+        NullToDefault = Value
+    End If
+End Function
+Private Sub AssertInit(Src As String)
+    If m_Logger Is Nothing Then
+        Err.Raise vbObjectError + 1, "clsCustomerCache." & Src, "Not initialized"
+    End If
+End Sub
+
+Private Sub HandleError(Src As String, Context As String)
+    m_Logger.LogError "clsCustomerCache." & Src, Err.Description & " | " & Context
+    Err.Clear
+End Sub

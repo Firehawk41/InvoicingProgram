@@ -245,12 +245,12 @@ Private Sub PopulateDateComboBox(isWeekly As Boolean)
     End If
 End Sub
 
-Private Sub PopulateComboBox(cbo As Object, List As Variant)
+Private Sub PopulateComboBox(Cbo As Object, List As Variant)
     Dim iIndex As Long
 
-    cbo.Clear
+    Cbo.Clear
     For iIndex = LBound(List) To UBound(List)
-        cbo.AddItem List(iIndex)
+        Cbo.AddItem List(iIndex)
     Next iIndex
 End Sub
 

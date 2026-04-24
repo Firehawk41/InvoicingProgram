@@ -83,11 +83,12 @@ Public Function Insert(C As clsCustomer) As Long
     If Not m_Logger.DebugMode Then On Error GoTo EH
 
     Dim SQL As String
-    SQL = "INSERT INTO customers (name, street_address, city, postal_code, country) " & _
+    SQL = "INSERT INTO customers (name, street_address, city, state, postal_code, country) " & _
           "VALUES (" & _
               SqlStr(C.Name) & ", " & _
               SqlStr(C.StreetAddress) & ", " & _
               SqlStr(C.City) & ", " & _
+              SqlStr(C.State) & ", " & _
               SqlStr(C.PostalCode) & ", " & _
               SqlStr(C.Country) & ")"
 
@@ -107,6 +108,7 @@ Public Sub Update(C As clsCustomer)
           "    name           = " & SqlStr(C.Name) & ", " & _
           "    street_address = " & SqlStr(C.StreetAddress) & ", " & _
           "    city           = " & SqlStr(C.City) & ", " & _
+          "    state          = " & SqlStr(C.State) & ", " & _
           "    postal_code    = " & SqlStr(C.PostalCode) & ", " & _
           "    country        = " & SqlStr(C.Country) & " " & _
           "WHERE ID = " & C.ID
