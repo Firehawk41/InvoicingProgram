@@ -18,7 +18,7 @@ Option Explicit
 ' DependsOn: clsLoggingSystem, clsAccessDatabase,
 '            clsCustomerService, clsChemicalService,
 '            clsAnalysisService, clsElementService,
-'            clsTRSubmissionFormParser, clsTRSubmission
+'            clsTRSubmissionFormParser, clsTRSubmission, clsTRFormInputResolver
 ' ChangeLog:
 '   - 1.0.0 - 2026-04-10 - Initial release (replaces clsTRSubmissionBuilder v0.1.0)
 '
@@ -44,12 +44,14 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, _
                       ChemicalSvc As clsChemicalService, _
                       AnalysisSvc As clsAnalysisService, _
                       ElementSvc As clsElementService, _
+                      InputResolver As clsTRFormInputResolver, _
                       Logger As clsLoggingSystem)
     Debug.Assert Not AccessDB Is Nothing
     Debug.Assert Not CustomerSvc Is Nothing
     Debug.Assert Not ChemicalSvc Is Nothing
     Debug.Assert Not AnalysisSvc Is Nothing
     Debug.Assert Not ElementSvc Is Nothing
+    Debug.Assert Not InputResolver Is Nothing
     Debug.Assert Not Logger Is Nothing
     Debug.Assert m_Logger Is Nothing         ' enforce single-init
 
@@ -57,10 +59,10 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, _
     Set m_Logger = Logger
 
     Set m_FormParser = New clsTRSubmissionFormParser
-    m_FormParser.Initialize AccessDB, CustomerSvc, ChemicalSvc, AnalysisSvc, ElementSvc, Logger
+    m_FormParser.Initialize AccessDB, CustomerSvc, ChemicalSvc, AnalysisSvc, ElementSvc, InputResolver, Logger
 
     Exit Sub
-EH:                                     HandleError "Initialize", "Failed"
+EH:                                                         HandleError "Initialize", "Failed"
 End Sub
 
 ' ----------------------------------------------------------------
@@ -81,7 +83,7 @@ Public Function BuildFromWorksheet(WkS As Worksheet) As clsTRSubmission
 
     Set BuildFromWorksheet = Sub_
     Exit Function
-EH:                                     HandleError "BuildFromWorksheet", "File: " & WkS.Parent.Name
+EH:                                                         HandleError "BuildFromWorksheet", "File: " & WkS.Parent.Name
 End Function
 
 ' ----------------------------------------------------------------

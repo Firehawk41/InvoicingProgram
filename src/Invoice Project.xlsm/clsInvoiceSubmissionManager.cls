@@ -46,11 +46,23 @@ End Property
 ' ==============
 ' Initialization
 ' ==============
-Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
+Public Sub Initialize(AccessDB As clsAccessDatabase, _
+                      CustomerSvc As clsCustomerService, _
+                      ChemicalSvc As clsChemicalService, _
+                      AnalysisSvc As clsAnalysisService, _
+                      ElementSvc As clsElementService, _
+                      Resolver As clsTRFormInputResolver, _
+                      Logger As clsLoggingSystem)
 
-    Debug.Assert Not Logger Is Nothing
-    Debug.Assert m_Logger Is Nothing
+
     Debug.Assert Not AccessDB Is Nothing
+    Debug.Assert Not CustomerSvc Is Nothing
+    Debug.Assert Not ChemicalSvc Is Nothing
+    Debug.Assert Not AnalysisSvc Is Nothing
+    Debug.Assert Not ElementSvc Is Nothing
+    Debug.Assert Not Resolver Is Nothing
+    Debug.Assert Not Logger Is Nothing
+    Debug.Assert m_Logger Is Nothing ' assert one init
 
     If Not Logger.DebugMode Then On Error GoTo ErrorHandler
 
@@ -59,21 +71,8 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
     Set m_Logger = Logger
     Set m_Gatekeeper = New clsInvoiceReportGatekeeper
 
-    ' Build the four domain services required by clsSubmissionService.
-    Dim CustomerSvc As New clsCustomerService
-    CustomerSvc.Initialize AccessDB, Logger
-
-    Dim ChemicalSvc As New clsChemicalService
-    ChemicalSvc.Initialize AccessDB, Logger
-
-    Dim AnalysisSvc As New clsAnalysisService
-    AnalysisSvc.Initialize AccessDB, Logger
-
-    Dim ElementSvc As New clsElementService
-    ElementSvc.Initialize AccessDB, Logger
-
     Set m_SubmissionSvc = New clsTRSubmissionService
-    m_SubmissionSvc.Initialize AccessDB, CustomerSvc, ChemicalSvc, AnalysisSvc, ElementSvc, Logger
+    m_SubmissionSvc.Initialize AccessDB, CustomerSvc, ChemicalSvc, AnalysisSvc, ElementSvc, Resolver, Logger
 
     Exit Sub
 ErrorHandler:

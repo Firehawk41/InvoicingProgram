@@ -55,7 +55,7 @@ Private m_Logger      As clsLoggingSystem
 Private m_AccessDB    As clsAccessDatabase
 Private m_CustomerSvc As clsCustomerService
 Private m_SampleParser As clsTRSampleFormParser
-
+Private m_InputResolver As clsTRFormInputResolver
 ' ----------------------------------------------------------------
 ' Initialization
 ' ----------------------------------------------------------------
@@ -64,6 +64,7 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, _
                       ChemicalSvc As clsChemicalService, _
                       AnalysisSvc As clsAnalysisService, _
                       ElementSvc As clsElementService, _
+                      InputResolver As clsTRFormInputResolver, _
                       Logger As clsLoggingSystem)
     Debug.Assert Not AccessDB Is Nothing
     Debug.Assert Not CustomerSvc Is Nothing
@@ -71,14 +72,16 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, _
     Debug.Assert Not AnalysisSvc Is Nothing
     Debug.Assert Not ElementSvc Is Nothing
     Debug.Assert Not Logger Is Nothing
+    Debug.Assert Not InputResolver Is Nothing
     Debug.Assert m_Logger Is Nothing         ' enforce single-init
 
     Set m_Logger = Logger
     Set m_AccessDB = AccessDB
     Set m_CustomerSvc = CustomerSvc
+    Set m_InputResolver = InputResolver
 
     Set m_SampleParser = New clsTRSampleFormParser
-    m_SampleParser.Initialize ChemicalSvc, AnalysisSvc, ElementSvc, Logger
+    m_SampleParser.Initialize ChemicalSvc, AnalysisSvc, ElementSvc, InputResolver, Logger
 End Sub
 
 ' ----------------------------------------------------------------
@@ -108,19 +111,19 @@ Public Function BuildFromWorksheet(WkS As Worksheet) As clsTRSubmission
     Dim D As Scripting.Dictionary
     Set D = BuildSubmissionDict(WkS, RequestType, CustomerID, CustomerName)
 
-    Dim Sub_ As New clsTRSubmission
-    Sub_.Initialize m_Logger
-    Sub_.LoadFromDict D
+    Dim S As New clsTRSubmission
+    S.Initialize m_Logger
+    S.LoadFromDict D
 
     ' 4. Parse and attach emails.
-    AttachEmails Sub_, WkS, RequestType
+    AttachEmails S, WkS, RequestType
 
     ' 5. Parse and attach samples.
-    AttachSamples Sub_, WkS, RequestType
+    AttachSamples S, WkS, RequestType
 
-    Set BuildFromWorksheet = Sub_
+    Set BuildFromWorksheet = S
     Exit Function
-EH:                                     HandleError "BuildFromWorksheet", "File: " & WkS.Parent.Name
+EH:                                                         HandleError "BuildFromWorksheet", "File: " & WkS.Parent.Name
 End Function
 
 ' ----------------------------------------------------------------
@@ -195,10 +198,13 @@ End Function
 ' ----------------------------------------------------------------
 Private Function ResolveCustomer(WkS As Worksheet) As clsCustomer
     Dim NameOnForm As String
-    NameOnForm = CStr(WkS.Range("C10").Value)
-
+    Dim AddressOnForm As String
     Dim C As clsCustomer
-    Set C = m_CustomerSvc.GetOrPrompt(NameOnForm)
+
+    NameOnForm = CStr(Trim(WkS.Range("C10").Value))
+    AddressOnForm = CStr(Trim(WkS.Range("C11").Value))
+
+    Set C = m_InputResolver.ResolveCustomer(NameOnForm, AddressOnForm)
 
     If C Is Nothing Then
         m_Logger.LogError "clsSubmissionFormParser.ResolveCustomer", vbObjectError + 1, "Could not resolve customer '" & NameOnForm & "' — submission will have CustomerID = 0."

@@ -66,7 +66,7 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
     m_Cache.Initialize m_Repo, Logger      ' Cache.Build() is called inside Initialize
 
     Exit Sub
-EH:                                             HandleError "Initialize", "Failed"
+EH:                                                                 HandleError "Initialize", "Failed"
 End Sub
 
 ' ----------------------------------------------------------------
@@ -105,6 +105,32 @@ Public Function GetIDByFormName(FormName As String) As Long
     AssertInit "GetIDByFormName"
     GetIDByFormName = m_Cache.GetIDByFormName(FormName)
 End Function
+Public Function GetByFormName(FormName As String) As clsChemical
+    AssertInit "GetByFormName"
+    Dim ChemicalID As Long
+    ChemicalID = m_Cache.GetIDByFormName(FormName)
+    If ChemicalID > 0 Then
+        Set GetByFormName = m_Cache.GetByID(ChemicalID)
+    End If
+    ' Returns Nothing if not found — caller handles miss
+End Function
+
+Public Function FormNameExists(FormName As String) As Boolean
+    AssertInit "FormNameExists"
+    FormNameExists = m_Cache.ExistsByFormName(FormName)
+End Function
+
+Public Sub AddFormName(FormName As String, ChemicalID As Long)
+    AssertInit "AddFormName"
+    Debug.Assert Len(Trim(FormName)) > 0
+    Debug.Assert ChemicalID > 0
+    If Not m_Logger.DebugMode Then On Error GoTo EH
+
+    m_Repo.InsertFormName FormName, ChemicalID
+    m_Cache.AddFormNameIndex FormName, ChemicalID
+    Exit Sub
+EH:                             HandleError "AddFormName", "FormName: " & FormName
+End Sub
 ' ----------------------------------------------------------------
 ' GetOrPrompt  —  lookup with add-on-miss (used during invoice entry)
 ' Returns Nothing if not found AND the user declines to add.
@@ -146,7 +172,7 @@ Public Function CreateChemical(D As Scripting.Dictionary) As clsChemical
     SaveChemical C
     Set CreateChemical = C
     Exit Function
-EH:                                             HandleError "CreateChemical", "Failed on: " & D("chemical_name")
+EH:                                                                 HandleError "CreateChemical", "Failed on: " & D("chemical_name")
 End Function
 
 Public Sub SaveChemical(C As clsChemical)
@@ -164,7 +190,7 @@ Public Sub SaveChemical(C As clsChemical)
 
     m_Cache.Upsert C                ' incremental update — no full rebuild
     Exit Sub
-EH:                                             HandleError "SaveChemical", "Failed on: " & C.Name
+EH:                                                                 HandleError "SaveChemical", "Failed on: " & C.Name
 End Sub
 
 Public Sub DeleteChemical(ChemicalID As Long)
@@ -175,7 +201,7 @@ Public Sub DeleteChemical(ChemicalID As Long)
     m_Repo.Delete ChemicalID
     m_Cache.Remove ChemicalID
     Exit Sub
-EH:                                             HandleError "DeleteChemical", "Failed on ID: " & ChemicalID
+EH:                                                                 HandleError "DeleteChemical", "Failed on ID: " & ChemicalID
 End Sub
 
 ' ----------------------------------------------------------------
@@ -261,21 +287,6 @@ Private Sub RequireValidIons(V As String)
         Err.Raise vbObjectError + 404, , "Invalid IonsPrep: " & V
     End If
 End Sub
-
-' Placeholder — replace body with real UserForm when ready.
-'
-' Pattern:
-'   Load frmAddChemical
-'   frmAddChemical.PreFill DefaultName
-'   frmAddChemical.Show vbModal
-'   If frmAddChemical.Confirmed Then
-'       Set ShowAddForm = CreateChemical(frmAddChemical.ResultDict)
-'   End If
-'   Unload frmAddChemical
-'
-Private Function ShowAddForm(Optional DefaultName As String = "") As clsChemical
-    m_Logger.LogInfo "clsChemicalService.ShowAddForm", "UserForm not yet implemented"
-End Function
 
 Private Sub AssertInit(Src As String)
     If m_Logger Is Nothing Then

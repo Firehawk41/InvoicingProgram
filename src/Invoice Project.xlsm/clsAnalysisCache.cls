@@ -114,7 +114,7 @@ NextRow:
     End If
 
     Exit Sub
-EH:                                     HandleError "Build", "Failed at row " & i
+EH:                                                         HandleError "Build", "Failed at row " & i
 End Sub
 
 ' ----------------------------------------------------------------
@@ -137,7 +137,7 @@ Public Sub Upsert(A As clsAnalysis)
 
     StoreInIndex A
     Exit Sub
-EH:                                     HandleError "Upsert", "Failed on ID: " & A.ID
+EH:                                                         HandleError "Upsert", "Failed on ID: " & A.ID
 End Sub
 
 Public Sub Remove(AnalysisID As Long)
@@ -152,7 +152,7 @@ Public Sub Remove(AnalysisID As Long)
         m_ByID.Remove AnalysisID
     End If
     Exit Sub
-EH:                                     HandleError "Remove", "Failed on ID: " & AnalysisID
+EH:                                                         HandleError "Remove", "Failed on ID: " & AnalysisID
 End Sub
 
 ' ----------------------------------------------------------------

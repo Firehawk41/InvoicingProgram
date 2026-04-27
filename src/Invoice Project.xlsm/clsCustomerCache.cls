@@ -30,6 +30,7 @@ Private m_Logger As clsLoggingSystem
 Private m_Repo   As clsCustomerRepository
 Private m_ByID   As Scripting.Dictionary   ' Long      -> clsCustomer
 Private m_ByName As Scripting.Dictionary   ' LCase key -> clsCustomer
+Private m_ByFormCustomer As Scripting.Dictionary ' composite key -> Long (customer_id)
 
 ' ----------------------------------------------------------------
 ' Initialization
@@ -43,6 +44,7 @@ Public Sub Initialize(Repo As clsCustomerRepository, Logger As clsLoggingSystem)
     Set m_Repo = Repo
     Set m_ByID = New Scripting.Dictionary
     Set m_ByName = New Scripting.Dictionary
+    Set m_ByFormCustomer = New Scripting.Dictionary
 
     Build
 End Sub
@@ -76,13 +78,13 @@ Public Sub Build()
     '                         3=city, 4=postal_code, 5=country
     For i = LBound(Customers, 2) To UBound(Customers, 2)
         Set D = New Scripting.Dictionary
-        D.Add "customer_id", NullToDefault(Customers(0, i), 0)
-        D.Add "customer_name", NullToDefault(Customers(1, i), "")
-        D.Add "street_address", NullToDefault(Customers(2, i), "")
-        D.Add "city", NullToDefault(Customers(3, i), "")
-        D.Add "state", NullToDefault(Customers(4, i), "")
-        D.Add "postal_code", NullToDefault(Customers(5, i), "")
-        D.Add "country", NullToDefault(Customers(6, i), "")
+        D.Add "customer_id", modUtilities.NullToDefault(Customers(0, i), 0)
+        D.Add "customer_name", modUtilities.NullToDefault(Customers(1, i), "")
+        D.Add "street_address", modUtilities.NullToDefault(Customers(2, i), "")
+        D.Add "city", modUtilities.NullToDefault(Customers(3, i), "")
+        D.Add "state", modUtilities.NullToDefault(Customers(4, i), "")
+        D.Add "postal_code", modUtilities.NullToDefault(Customers(5, i), "")
+        D.Add "country", modUtilities.NullToDefault(Customers(6, i), "")
         Set C = New clsCustomer
         C.Initialize m_Logger
         C.LoadFromDict D
@@ -107,9 +109,9 @@ Public Sub Build()
     ' SelectAllFormCustomers column order:
     '   0=form_customer_name, 1=form_address, 2=customer_id
     For j = LBound(FormCustomers, 2) To UBound(FormCustomers, 2)
-        FormName = NullToDefault(FormCustomers(0, j), "")
-        FormAddress = NullToDefault(FormCustomers(1, j), "")
-        CustomerID = NullToDefault(FormCustomers(2, j), 0)
+        FormName = modUtilities.NullToDefault(FormCustomers(0, j), "")
+        FormAddress = modUtilities.NullToDefault(FormCustomers(1, j), "")
+        CustomerID = modUtilities.NullToDefault(FormCustomers(2, j), 0)
 
         ' Skip malformed rows
         If FormName = "" Or CustomerID = 0 Then GoTo NextRow
@@ -225,7 +227,37 @@ Public Function AllCustomers() As Collection
     Next Key
     Set AllCustomers = Coll
 End Function
+Public Function GetIDByFormCustomer(Name As String, Address As String) As Long
+    AssertInit "GetIDByFormCustomer"
+    Dim Key As String
+    Key = BuildCustomerKey(Name, Address)
+    If m_ByFormCustomer.Exists(Key) Then
+        GetIDByFormCustomer = m_ByFormCustomer(Key)
+    Else
+        GetIDByFormCustomer = 0
+    End If
+End Function
 
+Public Function ExistsByFormCustomer(Name As String, Address As String) As Boolean
+    AssertInit "ExistsByFormCustomer"
+    ExistsByFormCustomer = m_ByFormCustomer.Exists(BuildCustomerKey(Name, Address))
+End Function
+
+Public Sub AddFormCustomerIndex(Name As String, Address As String, CustomerID As Long)
+    AssertInit "AddFormCustomerIndex"
+    Debug.Assert Len(Trim(Name)) > 0
+    Debug.Assert CustomerID > 0
+    If Not m_Logger.DebugMode Then On Error GoTo EH
+
+    Dim Key As String
+    Key = BuildCustomerKey(Name, Address)
+
+    If Not m_ByFormCustomer.Exists(Key) Then
+        m_ByFormCustomer.Add Key, CustomerID
+    End If
+    Exit Sub
+EH:                             HandleError "AddFormCustomerIndex", "Name: " & Name
+End Sub
 ' ----------------------------------------------------------------
 ' Private helpers
 ' ----------------------------------------------------------------
@@ -237,13 +269,10 @@ End Sub
 Private Function NormName(V As String) As String
     NormName = LCase$(Trim$(V))
 End Function
-Private Function NullToDefault(Value As Variant, Default As Variant) As Variant
-    If IsNull(Value) Then
-        NullToDefault = Default
-    Else
-        NullToDefault = Value
-    End If
+Private Function BuildCustomerKey(Name As String, Address As String) As String
+    BuildCustomerKey = LCase$(Trim$(Name)) & "|" & LCase$(Trim$(Address))
 End Function
+
 Private Sub AssertInit(Src As String)
     If m_Logger Is Nothing Then
         Err.Raise vbObjectError + 1, "clsCustomerCache." & Src, "Not initialized"

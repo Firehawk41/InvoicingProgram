@@ -17,8 +17,8 @@ Option Explicit
 '              miss and returns a fully hydrated domain object.
 '              Single coordination point for both parsers and any
 '              future consumers.
-' DependsOn: clsCustomerService, clsChemicalService,
-'            frmCustomerSelector, frmChemicalSelector,
+' DependsOn: clsCustomerService, clsChemicalService, clsElementService,
+'            frmTRCustomerSelector, frmTRChemicalSelector,
 '            clsLoggingSystem
 ' ChangeLog:
 '   - 1.0.0 - 2026-04-23 - Initial release
@@ -50,12 +50,24 @@ Option Explicit
 ' INJECTED INTO:
 '   clsTRSubmissionFormParser  — resolves customer
 '   clsTRSampleFormParser      — resolves chemical
+'
+' SESSION CACHE:
+'   Resolved chemicals and customers are cached by form name/key
+'   within a single run. Prevents repeated UI prompts for the
+'   same unrecognised string across multiple samples in a batch.
+'   Cache lives only for the lifetime of this resolver instance.
+'
+' PERSISTENCE:
+'   After UI resolution (both select-existing and create-new paths),
+'   the form name mapping is written to the DB via the service.
+'   Next session the same string resolves via fast path with no UI.
 ' ================================================================
 Private m_Logger As clsLoggingSystem
 Private m_CustomerSvc As clsCustomerService
 Private m_ChemicalSvc As clsChemicalService
+Private m_ElementSvc As clsElementService
 
-Public Sub Initialize(CustomerSvc As clsCustomerService, ChemicalSvc As clsChemicalService, Logger As clsLoggingSystem)
+Public Sub Initialize(CustomerSvc As clsCustomerService, ChemicalSvc As clsChemicalService, ElementSvc As clsElementService, Logger As clsLoggingSystem)
     Debug.Assert Not Logger Is Nothing
     Debug.Assert Not CustomerSvc Is Nothing
     Debug.Assert Not ChemicalSvc Is Nothing
@@ -66,96 +78,116 @@ Public Sub Initialize(CustomerSvc As clsCustomerService, ChemicalSvc As clsChemi
     Set m_Logger = Logger
     Set m_CustomerSvc = CustomerSvc
     Set m_ChemicalSvc = ChemicalSvc
+    Set m_ElementSvc = ElementSvc
 
 End Sub
 Public Function ResolveCustomer(Name As String, Address As String) As clsCustomer
-
     AssertInit "ResolveCustomer"
-
     If Not m_Logger.DebugMode Then On Error GoTo EH
 
-    ' Fast path — found in cache
+    Dim Key As String
+    Key = LCase(Trim(Name)) & "|" & LCase(Trim(Address))
+
+    ' Fast path — form key in DB cache
     Dim CustomerID As Long
     CustomerID = m_CustomerSvc.GetIDByFormCustomer(Name, Address)
     If CustomerID > 0 Then
-        Set ResolveCustomer = m_CustomerSvc.LoadCustomer(CustomerID)
+        Dim C As clsCustomer
+        Set C = m_CustomerSvc.LoadCustomer(CustomerID)
+        Set ResolveCustomer = C
         Exit Function
     End If
 
     ' Slow path — launch UI
-    Dim Frm As frmCustomerSelector
-    Set Frm = New frmCustomerSelector
-    Frm.Initialize m_CustomerSvc, Name, Address, m_Logger
+    Dim Frm As frmTRCustomerSelector
+    Set Frm = New frmTRCustomerSelector
+    Frm.Initialize m_CustomerSvc.AllCustomers, Name, Address, m_Logger
     Frm.Show
 
-    Do ' loops in order to allow the form to validate
-
-    If Frm.Cancelled Then
-        Set ResolveCustomer = Nothing
-        Exit Function
-    End If
-
-    If Frm.IsNewCustomer Then
-        If m_CustomerSvc.IsUniqueName(Frm.NewCustomerDict("customer_name")) Then
-            Set ResolveCustomer = m_CustomerSvc.CreateCustomer(Frm.NewCustomerDict)
+    Do
+        If Frm.Cancelled Then
+            Set ResolveCustomer = Nothing
             Exit Function
-        Else
-            Frm.ShowValidationError "Customer name already exists"
-            Frm.Show
         End If
-    Else
-        Set ResolveCustomer = m_CustomerSvc.LoadCustomer(Frm.SelectedCustomerID)
-        Exit Function
-    End If
 
-Loop
-Exit Function
+        If Frm.IsNewCustomer Then
+            If m_CustomerSvc.IsUniqueName(Frm.NewCustomerDict("customer_name")) Then
+                Set C = m_CustomerSvc.CreateCustomer(Frm.NewCustomerDict)
+                m_CustomerSvc.AddFormKey Name, Address, C.ID
+                Set ResolveCustomer = C
+                Exit Function
+            Else
+                Frm.ShowValidationError "Customer name already exists"
+                Frm.Show
+            End If
+        Else
+            Set C = m_CustomerSvc.LoadCustomer(Frm.SelectedCustomerID)
+            m_CustomerSvc.AddFormKey Name, Address, C.ID
+            Set ResolveCustomer = C
+            Exit Function
+        End If
+    Loop
+    Exit Function
 
-EH:             HandleError "ResolveCustomer", "Name: " & Name & " Address: " & Address
+EH:                             HandleError "ResolveCustomer", "Name: " & Name & " | Address: " & Address
 End Function
 Public Function ResolveChemical(Name As String) As clsChemical
     AssertInit "ResolveChemical"
-    
     If Not m_Logger.DebugMode Then On Error GoTo EH
-    
-    ' Fast path — found in cache
+
+    Dim Key As String
+    Key = LCase(Trim(Name))
+
+    ' Fast path — form name in DB cache
     Dim ChemicalID As Long
-    ChemicalID = m_ChemicalSvc.GetIDByFormChemical(Name)
+    ChemicalID = m_ChemicalSvc.GetIDByFormName(Name)
     If ChemicalID > 0 Then
-        Set ResolveChemical = m_ChemicalSvc.LoadChemical(ChemicalID)
+        Dim C As clsChemical
+        Set C = m_ChemicalSvc.LoadChemical(ChemicalID)
+        Set ResolveChemical = C
         Exit Function
     End If
-    
+
     ' Slow path — launch UI
-    Dim Frm As frmChemicalSelector
-    Set Frm = New frmChemicalSelector
-    Frm.Initialize m_ChemicalSvc, Name, m_Logger
+    Dim Frm As frmTRChemicalSelector
+    Set Frm = New frmTRChemicalSelector
+    Frm.Initialize m_ChemicalSvc.AllChemicals, _
+                   m_ChemicalSvc.MetalsPrepList, _
+                   m_ChemicalSvc.SiliconPrepList, _
+                   m_ChemicalSvc.IonsPrepList, _
+                   m_ElementSvc.AllElements, _
+                   Name, _
+                   m_Logger
     Frm.Show
-    Do ' loops to allow form to validate
-    
+
+    Do
         If Frm.Cancelled Then
             Set ResolveChemical = Nothing
             Exit Function
         End If
-        
+
         If Frm.IsNewChemical Then
-            If m_CustomerSvc.IsUniqueName(Frm.NewCustomerDict("chemical_name")) Then
-                Set ResolveChemical = m_ChemicalSvc.CreateChemical(Frm.NewChemicalDict)
+            If m_ChemicalSvc.IsUniqueName(Frm.NewChemicalDict("chemical_name")) Then
+                Set C = m_ChemicalSvc.CreateChemical(Frm.NewChemicalDict)
+                ' Persist form name mapping and update session cache
+                m_ChemicalSvc.AddFormName Name, C.ID
+                Set ResolveChemical = C
                 Exit Function
             Else
                 Frm.ShowValidationError "Chemical name already exists"
                 Frm.Show
             End If
-            
         Else
-            Set ResolveChemical = m_ChemicalSvc.LoadChemical(Frm.SelectedChemicalID)
+            Set C = m_ChemicalSvc.LoadChemical(Frm.SelectedChemicalID)
+            ' Persist form name mapping and update session cache
+            m_ChemicalSvc.AddFormName Name, C.ID
+            Set ResolveChemical = C
             Exit Function
         End If
-        
     Loop
     Exit Function
-    
-EH:             HandleError "ResolveChemical", "Name: " & Name
+
+EH:                             HandleError "ResolveChemical", "Name: " & Name
 End Function
 
 ' ----------------------------------------------------------------

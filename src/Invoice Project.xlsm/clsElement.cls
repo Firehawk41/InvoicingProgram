@@ -83,7 +83,7 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     m_Name = CStr(D("element_name"))
 
     Exit Sub
-EH:                                     HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
+EH:                                                         HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
 End Sub
 
 ' ----------------------------------------------------------------
@@ -99,7 +99,7 @@ Public Function ToRecord() As Scripting.Dictionary
     D.Add "element_name", m_Name
     Set ToRecord = D
     Exit Function
-EH:                                     HandleError "ToRecord", "Failed to export element: " & m_Symbol
+EH:                                                         HandleError "ToRecord", "Failed to export element: " & m_Symbol
 End Function
 
 ' ----------------------------------------------------------------
@@ -121,7 +121,7 @@ Friend Sub SetInternalID(NewID As Long)
 
             m_ID = NewID
             Exit Sub
-EH:                                                                                                             HandleError "SetInternalID", "Failed to set ID: " & NewID & " for element: " & m_Symbol
+EH:                                                                                                                                                                         HandleError "SetInternalID", "Failed to set ID: " & NewID & " for element: " & m_Symbol
         End Sub
 
         ' ----------------------------------------------------------------

@@ -53,7 +53,7 @@ Public Function SelectAll() As Variant
         "FROM customers " & _
         "ORDER BY customer_name")
     Exit Function
-EH:                                         HandleError "SelectAll", "Failed"
+EH:                                                             HandleError "SelectAll", "Failed"
 End Function
 ' ----------------------------------------------------------------
 ' Form customer lookup  (called ONLY by clsCustomerCache)
@@ -66,10 +66,10 @@ Public Function SelectAllFormCustomers() As Variant
 
     SelectAllFormCustomers = m_AccessDB.ExecuteQuery( _
         "SELECT form_customer, form_address, customer_id " & _
-        "FROM   form_customers " & _
-        "ORDER BY form_customer_name")
+        "FROM form_customers " & _
+        "ORDER BY form_customer")
     Exit Function
-EH:                 HandleError "SelectAllFormCustomers", "Failed"
+EH:                                     HandleError "SelectAllFormCustomers", "Failed"
 End Function
 ' ----------------------------------------------------------------
 ' Writes
@@ -94,9 +94,21 @@ Public Function Insert(C As clsCustomer) As Long
 
     Insert = m_AccessDB.ExecuteInsert(SQL)
     Exit Function
-EH:                                         HandleError "Insert", "Failed on: " & C.Name
+EH:                                                             HandleError "Insert", "Failed on: " & C.Name
 End Function
+Public Sub InsertFormCustomer(Name As String, Address As String, CustomerID As Long)
+    AssertInit "InsertFormCustomer"
+    Debug.Assert Len(Trim(Name)) > 0
+    Debug.Assert CustomerID > 0
+    If Not m_Logger.DebugMode Then On Error GoTo EH
 
+    m_AccessDB.ExecuteNonQuery _
+        "INSERT INTO form_customers (form_customer_name, form_address, customer_id) " & _
+        "VALUES (" & SqlStr(Name) & ", " & SqlStr(Address) & ", " & CustomerID & ")"
+    Exit Sub
+EH:
+    HandleError "InsertFormCustomer", "Name: " & Name & " | CustomerID: " & CustomerID
+End Sub
 Public Sub Update(C As clsCustomer)
     AssertInit "Update"
     Debug.Assert Not C Is Nothing
@@ -115,7 +127,7 @@ Public Sub Update(C As clsCustomer)
 
     m_AccessDB.ExecuteNonQuery SQL
     Exit Sub
-EH:                                         HandleError "Update", "Failed on ID: " & C.ID
+EH:                                                             HandleError "Update", "Failed on ID: " & C.ID
 End Sub
 
 Public Sub Delete(CustomerID As Long)
@@ -126,7 +138,7 @@ Public Sub Delete(CustomerID As Long)
     m_AccessDB.ExecuteNonQuery _
         "DELETE FROM customers WHERE ID = " & CustomerID
     Exit Sub
-EH:                                         HandleError "Delete", "Failed on ID: " & CustomerID
+EH:                                                             HandleError "Delete", "Failed on ID: " & CustomerID
 End Sub
 
 ' ----------------------------------------------------------------

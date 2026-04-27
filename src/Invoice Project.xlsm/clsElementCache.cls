@@ -90,7 +90,7 @@ Public Sub Build()
     Next i
 
     Exit Sub
-EH:                                     HandleError "Build", "Failed at row " & i
+EH:                                                         HandleError "Build", "Failed at row " & i
 End Sub
 
 ' ----------------------------------------------------------------
@@ -119,7 +119,7 @@ Public Sub Upsert(E As clsElement)
 
     StoreInIndex E
     Exit Sub
-EH:                                     HandleError "Upsert", "Failed on ID: " & E.ID
+EH:                                                         HandleError "Upsert", "Failed on ID: " & E.ID
 End Sub
 
 Public Sub Remove(ElementID As Long)
@@ -137,7 +137,7 @@ Public Sub Remove(ElementID As Long)
         m_ByID.Remove ElementID
     End If
     Exit Sub
-EH:                                     HandleError "Remove", "Failed on ID: " & ElementID
+EH:                                                         HandleError "Remove", "Failed on ID: " & ElementID
 End Sub
 
 ' ----------------------------------------------------------------

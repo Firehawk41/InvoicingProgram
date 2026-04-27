@@ -119,15 +119,17 @@ Public Sub Build()
         Dim j As Long
         For j = LBound(FormRows, 2) To UBound(FormRows, 2)
             Dim FormName As String
-            FormName = NullToDefault(FormRows(0, j), "")
+            FormName = modUtilities.NullToDefault(FormRows(0, j), "")
             If FormName = "" Then GoTo NextRow
 
             Dim ChemicalID As Long
-            ChemicalID = NullToDefault(FormRows(1, j), 0)
+            ChemicalID = modUtilities.NullToDefault(FormRows(1, j), 0)
             If ChemicalID = 0 Then GoTo NextRow
 
-            If Not m_ByFormName.Exists(FormName) Then
-                m_ByFormName.Add FormName, ChemicalID
+            Dim Key As String
+            Key = NormName(FormName)  ' normalize before storing
+            If Not m_ByFormName.Exists(Key) Then
+                m_ByFormName.Add Key, ChemicalID
             End If
 
 NextRow:
@@ -135,7 +137,7 @@ NextRow:
     End If
 
     Exit Sub
-EH:                                             HandleError "Build", "Failed at row " & i
+EH:                                                                 HandleError "Build", "Failed at row " & i
 End Sub
 
 ' ----------------------------------------------------------------
@@ -158,7 +160,7 @@ Public Sub Upsert(C As clsChemical)
 
     StoreInIndex C
     Exit Sub
-EH:                                             HandleError "Upsert", "Failed on ID: " & C.ID
+EH:                                                                 HandleError "Upsert", "Failed on ID: " & C.ID
 End Sub
 
 Public Sub Remove(ChemicalID As Long)
@@ -173,7 +175,7 @@ Public Sub Remove(ChemicalID As Long)
         m_ByID.Remove ChemicalID
     End If
     Exit Sub
-EH:                                             HandleError "Remove", "Failed on ID: " & ChemicalID
+EH:                                                                 HandleError "Remove", "Failed on ID: " & ChemicalID
 End Sub
 
 ' ----------------------------------------------------------------
@@ -231,15 +233,38 @@ Public Function AllChemicals() As Collection
     Set AllChemicals = Coll
 End Function
 Public Function GetIDByFormName(FormName As String) As Long
-    Dim NormName As String
-    NormName = LCase(Trim(FormName))
+    AssertInit "GetIDByFormName"
+    Dim Key As String
+    Key = NormName(FormName)  ' use the private function consistently
 
-    If m_ByFormName.Exists(NormName) Then
-        GetIDByFormName = m_ByFormName(NormName)
+    If m_ByFormName.Exists(Key) Then
+        GetIDByFormName = m_ByFormName(Key)
     Else
-        GetIDByFormName = 0  ' sentinel — caller checks for zero
+        GetIDByFormName = 0
     End If
 End Function
+Public Function ExistsByFormName(FormName As String) As Boolean
+    AssertInit "ExistsByFormName"
+    ExistsByFormName = m_ByFormName.Exists(NormName(FormName))
+End Function
+
+Public Sub AddFormNameIndex(FormName As String, ChemicalID As Long)
+    AssertInit "AddFormNameIndex"
+    Debug.Assert Len(Trim(FormName)) > 0
+    Debug.Assert ChemicalID > 0
+    If Not m_Logger.DebugMode Then On Error GoTo EH
+
+    Dim Key As String
+    Key = NormName(FormName)
+
+    ' Silently skip if already indexed — duplicate form names
+    ' are a data issue, not a cache issue
+    If Not m_ByFormName.Exists(Key) Then
+        m_ByFormName.Add Key, ChemicalID
+    End If
+    Exit Sub
+EH:                             HandleError "AddFormNameIndex", "FormName: " & FormName
+End Sub
 ' ----------------------------------------------------------------
 ' Private helpers
 ' ----------------------------------------------------------------

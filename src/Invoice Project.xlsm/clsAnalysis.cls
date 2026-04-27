@@ -83,7 +83,7 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     m_Description = CStr(D("analysis_description"))
 
     Exit Sub
-EH:                                     HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
+EH:                                                         HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
 End Sub
 
 ' ----------------------------------------------------------------
@@ -99,7 +99,7 @@ Public Function ToRecord() As Scripting.Dictionary
     D.Add "analysis_description", m_Description
     Set ToRecord = D
     Exit Function
-EH:                                     HandleError "ToRecord", "Failed to export analysis: " & m_Name
+EH:                                                         HandleError "ToRecord", "Failed to export analysis: " & m_Name
 End Function
 
 ' ----------------------------------------------------------------
@@ -121,7 +121,7 @@ Friend Sub SetInternalID(NewID As Long)
 
             m_ID = NewID
             Exit Sub
-EH:                                                                                                             HandleError "SetInternalID", "Failed to set ID: " & NewID & " for analysis: " & m_Name
+EH:                                                                                                                                                                         HandleError "SetInternalID", "Failed to set ID: " & NewID & " for analysis: " & m_Name
         End Sub
 
         ' ----------------------------------------------------------------

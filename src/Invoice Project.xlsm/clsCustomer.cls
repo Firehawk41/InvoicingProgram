@@ -121,7 +121,7 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     m_Country = CStr(D("country"))
 
     Exit Sub
-EH:                                         HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
+EH:                                                             HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
 End Sub
 
 ' ----------------------------------------------------------------
@@ -141,7 +141,7 @@ Public Function ToRecord() As Scripting.Dictionary
     D.Add "country", m_Country
     Set ToRecord = D
     Exit Function
-EH:                                         HandleError "ToRecord", "Failed to export customer: " & m_Name
+EH:                                                             HandleError "ToRecord", "Failed to export customer: " & m_Name
 End Function
 
 ' ----------------------------------------------------------------
@@ -164,27 +164,27 @@ Friend Sub SetInternalID(NewID As Long)
             m_ID = NewID
             Exit Sub
 EH:
-    HandleError "SetInternalID", "Failed to set ID: " & NewID & " for customer: " & m_Name
-End Sub
+            HandleError "SetInternalID", "Failed to set ID: " & NewID & " for customer: " & m_Name
+        End Sub
 
-' ----------------------------------------------------------------
-' Private helpers
-' ----------------------------------------------------------------
-Private Sub RequireKey(D As Scripting.Dictionary, Key As String)
-    Debug.Assert D.Exists(Key)
-    If Not D.Exists(Key) Then
-        Err.Raise vbObjectError + 200, "clsCustomer.LoadFromDict", _
+        ' ----------------------------------------------------------------
+        ' Private helpers
+        ' ----------------------------------------------------------------
+        Private Sub RequireKey(D As Scripting.Dictionary, Key As String)
+            Debug.Assert D.Exists(Key)
+            If Not D.Exists(Key) Then
+                Err.Raise vbObjectError + 200, "clsCustomer.LoadFromDict", _
     "Missing required key: " & Key
-    End If
-End Sub
+            End If
+        End Sub
 
-Private Sub AssertInit(Src As String)
-    If m_Logger Is Nothing Then
-        Err.Raise vbObjectError + 1, "clsCustomer." & Src, "Not initialized"
-    End If
-End Sub
+        Private Sub AssertInit(Src As String)
+            If m_Logger Is Nothing Then
+                Err.Raise vbObjectError + 1, "clsCustomer." & Src, "Not initialized"
+            End If
+        End Sub
 
-Private Sub HandleError(Src As String, Optional Context As String = "")
-    m_Logger.LogError "clsCustomer." & Src, Err.Description & " | " & Context
-    Err.Clear
-End Sub
+        Private Sub HandleError(Src As String, Optional Context As String = "")
+            m_Logger.LogError "clsCustomer." & Src, Err.Description & " | " & Context
+            Err.Clear
+        End Sub

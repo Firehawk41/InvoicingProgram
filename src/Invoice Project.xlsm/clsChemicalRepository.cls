@@ -17,6 +17,7 @@ Option Explicit
 ' DependsOn: clsLoggingSystem, clsAccessDatabase, clsChemical
 ' ChangeLog:
 '   - 1.0.0 - 2026-04-10 - Initial release
+'   - 1.1.0 - 2026-04-26 - Added InsertFormName
 '
 ' ================================================================
 ' LAYER: Repository — translates between objects and SQL.
@@ -68,7 +69,7 @@ Public Function SelectAll() As Variant
                 "FROM chemicals " & _
                 "ORDER BY chemical_name")
     Exit Function
-EH:                                             HandleError "SelectAll", "Failed"
+EH:                                                                 HandleError "SelectAll", "Failed"
 End Function
 
 Public Function SelectAllKEDElements() As Variant
@@ -80,15 +81,40 @@ Public Function SelectAllKEDElements() As Variant
         "FROM   ked_elements " & _
         "ORDER BY chemical_id")
     Exit Function
-EH:                                             HandleError "SelectAllKEDElements", "Failed"
+EH:                                                                 HandleError "SelectAllKEDElements", "Failed"
 End Function
 Public Function SelectAllFormChemicals() As Variant
-    ' Returns 2D array: col 0 = form_name, col 1 = chemical_id
+    AssertInit "SelectAllFormChemicals"
+    If Not m_Logger.DebugMode Then On Error GoTo EH
+
     SelectAllFormChemicals = m_AccessDB.ExecuteQuery( _
         "SELECT form_chemical_name, chemical_id " & _
         "FROM   form_chemicals " & _
         "ORDER BY form_chemical_name")
+    Exit Function
+EH:                             HandleError "SelectAllFormChemicals", "Failed"
 End Function
+
+' ----------------------------------------------------------------
+' Form name mapping writes
+' ----------------------------------------------------------------
+' Persists a new form_chemical_name -> chemical_id mapping.
+' Called by clsChemicalService.AddFormName after UI resolution.
+' No transaction needed — single row insert, no FK children.
+'
+Public Sub InsertFormName(FormName As String, ChemicalID As Long)
+    AssertInit "InsertFormName"
+    Debug.Assert Len(Trim(FormName)) > 0
+    Debug.Assert ChemicalID > 0
+    If Not m_Logger.DebugMode Then On Error GoTo EH
+
+    m_AccessDB.ExecuteNonQuery _
+        "INSERT INTO form_chemicals (form_chemical_name, chemical_id) " & _
+        "VALUES (" & SqlStr(FormName) & ", " & ChemicalID & ")"
+    Exit Sub
+EH:
+    HandleError "InsertFormName", "FormName: " & FormName & " ChemicalID: " & ChemicalID
+End Sub
 ' ----------------------------------------------------------------
 ' Writes
 ' ----------------------------------------------------------------
