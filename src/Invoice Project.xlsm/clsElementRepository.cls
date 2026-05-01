@@ -48,11 +48,11 @@ Public Function SelectAll() As Variant
     If Not m_Logger.DebugMode Then On Error GoTo EH
 
     SelectAll = m_AccessDB.ExecuteQuery( _
-        "SELECT ID, symbol, name " & _
+        "SELECT ID, element_symbol, element_name " & _
         "FROM   elements " & _
-        "ORDER BY symbol")
+        "ORDER BY element_symbol")
     Exit Function
-EH:                         HandleError "SelectAll", "Failed"
+EH:                                                         HandleError "SelectAll", "Failed"
 End Function
 
 ' ----------------------------------------------------------------
@@ -72,7 +72,7 @@ Public Function Insert(E As clsElement) As Long
 
     Insert = m_AccessDB.ExecuteInsert(SQL)
     Exit Function
-EH:                         HandleError "Insert", "Failed on: " & E.Symbol
+EH:                                                         HandleError "Insert", "Failed on: " & E.Symbol
 End Function
 
 Public Sub Update(E As clsElement)
@@ -89,7 +89,7 @@ Public Sub Update(E As clsElement)
 
     m_AccessDB.ExecuteNonQuery SQL
     Exit Sub
-EH:                         HandleError "Update", "Failed on ID: " & E.ID
+EH:                                                         HandleError "Update", "Failed on ID: " & E.ID
 End Sub
 
 Public Sub Delete(ElementID As Long)
@@ -100,7 +100,7 @@ Public Sub Delete(ElementID As Long)
     m_AccessDB.ExecuteNonQuery _
         "DELETE FROM elements WHERE ID = " & ElementID
     Exit Sub
-EH:                         HandleError "Delete", "Failed on ID: " & ElementID
+EH:                                                         HandleError "Delete", "Failed on ID: " & ElementID
 End Sub
 
 ' ----------------------------------------------------------------

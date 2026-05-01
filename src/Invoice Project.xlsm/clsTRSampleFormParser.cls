@@ -16,7 +16,7 @@ Option Explicit
 '              worksheet and returns a fully-hydrated clsSample.
 '              Owns ALL column-offset and cell-reading logic for samples.
 ' DependsOn: clsLoggingSystem, clsChemicalService, clsAnalysisService,
-'            clsElementService, clsSample, modEnums, clsChemical, clsAnalysis
+'            clsElementService, clsSample, modEnums, clsChemical
 ' ChangeLog:
 '   - 1.0.0 - 2026-04-10 - Extracted from clsTestingRequestSample.Initialize
 '
@@ -43,17 +43,19 @@ Private m_Logger      As clsLoggingSystem
 Private m_ChemicalSvc As clsChemicalService
 Private m_AnalysisSvc As clsAnalysisService
 Private m_ElementSvc  As clsElementService
-
+Private m_InputResolver As clsTRFormInputResolver
 ' ----------------------------------------------------------------
 ' Initialization
 ' ----------------------------------------------------------------
 Public Sub Initialize(ChemicalSvc As clsChemicalService, _
                       AnalysisSvc As clsAnalysisService, _
                       ElementSvc As clsElementService, _
+                      InputResolver As clsTRFormInputResolver, _
                       Logger As clsLoggingSystem)
     Debug.Assert Not ChemicalSvc Is Nothing
     Debug.Assert Not AnalysisSvc Is Nothing
     Debug.Assert Not ElementSvc Is Nothing
+    Debug.Assert Not InputResolver Is Nothing
     Debug.Assert Not Logger Is Nothing
     Debug.Assert m_Logger Is Nothing        ' enforce single-init
 
@@ -61,6 +63,7 @@ Public Sub Initialize(ChemicalSvc As clsChemicalService, _
     Set m_ChemicalSvc = ChemicalSvc
     Set m_AnalysisSvc = AnalysisSvc
     Set m_ElementSvc = ElementSvc
+    Set m_InputResolver = InputResolver
 End Sub
 
 ' ----------------------------------------------------------------
@@ -70,25 +73,27 @@ End Sub
 ' SampleCell: the cell in col 2 (sample ID column) for this row.
 ' SampleRange: the full sample block (used to bound analysis scan).
 '
-Public Function BuildFromRow(SampleCell As Range, _
-                             SampleRange As Range, _
-                             RequestType As TestingRequestTypeEnum) As clsTRSample
+Public Function BuildFromRow(SampleCell As Range, SampleRange As Range, RequestType As TestingRequestTypeEnum) As clsTRSample
+    Dim FormChemName As String
+    Dim C As clsChemical
+    Dim ChemicalID As Long
+    Dim D As Scripting.Dictionary
+    Dim S As New clsTRSample
+
     AssertInit "BuildFromRow"
     Debug.Assert Not SampleCell Is Nothing
     Debug.Assert Not SampleRange Is Nothing
     If Not m_Logger.DebugMode Then On Error GoTo EH
 
-    ' 1. Resolve Chemical first — ID is required in the scalar dict.
-    Dim FormChemName As String
+    ' 1. Resolve Chemical first - ID is required in the scalar dict.
     FormChemName = GetFormChemicalName(SampleCell.Worksheet, SampleCell, RequestType)
-    Dim ChemicalID As Long
-    ChemicalID = ResolveChemicalID(FormChemName, CStr(SampleCell.Value))
+    Set C = ResolveChemical(FormChemName)
+    If Not C Is Nothing Then
+        ChemicalID = C.ID
+    End If
 
     ' 2. Build scalar dict and hydrate entity.
-    Dim D As Scripting.Dictionary
-    Set D = BuildSampleDict(SampleCell, RequestType, ChemicalID)
-
-    Dim S As New clsSample
+    Set D = BuildSampleDict(SampleCell, RequestType, ChemicalID, FormChemName)
     S.Initialize m_Logger
     S.LoadFromDict D
 
@@ -100,7 +105,7 @@ Public Function BuildFromRow(SampleCell As Range, _
 
     Set BuildFromRow = S
     Exit Function
-EH:                         HandleError "BuildFromRow", "Row: " & SampleCell.Row
+EH:                                                         HandleError "BuildFromRow", "Row: " & SampleCell.Row
 End Function
 
 ' ----------------------------------------------------------------
@@ -108,14 +113,15 @@ End Function
 ' ----------------------------------------------------------------
 Private Function BuildSampleDict(SampleCell As Range, _
                                  RequestType As TestingRequestTypeEnum, _
-                                 ChemicalID As Long) As Scripting.Dictionary
+                                 ChemicalID As Long, _
+                                 FormChemName As String) As Scripting.Dictionary
     Dim D   As New Scripting.Dictionary
     Dim WkS As Worksheet
     Set WkS = SampleCell.Worksheet
 
     D.Add "sample_id", 0
     D.Add "sample_name", CStr(SampleCell.Value)
-    D.Add "form_chemical_name", GetFormChemicalName(WkS, SampleCell, RequestType)
+    D.Add "form_chemical_name", FormChemName
     D.Add "chemical_id", ChemicalID
     D.Add "processing_time", CLng(GetProcessingTime(WkS, SampleCell, RequestType))
     D.Add "additional_notes", GetColumnValue(WkS, SampleCell.Row, GetNotesCol(RequestType))
@@ -127,17 +133,15 @@ End Function
 ' ----------------------------------------------------------------
 ' Private: Chemical resolution
 ' ----------------------------------------------------------------
-Private Function ResolveChemicalID(FormChemName As String, SampleName As String) As Long
+Private Function ResolveChemical(FormChemName As String) As clsChemical
+    ' Fast path � form name found in cache
     Dim C As clsChemical
-    Set C = m_ChemicalSvc.GetByName(FormChemName)
+    Set C = m_InputResolver.ResolveChemical(FormChemName)
 
     If C Is Nothing Then
-        m_Logger.LogError "clsSampleFormParser.ResolveChemicalID", _
-            "Chemical not found: '" & FormChemName & "' — sample: " & SampleName
-        ResolveChemicalID = 0
-    Else
-        ResolveChemicalID = C.ID
+        Err.Raise vbObjectError + 1, "clsTRSampleFormParser.ResolveChemical", "Could not resolve chemical '" & FormChemName & "'."
     End If
+    Set ResolveChemical = C
 End Function
 
 ' ----------------------------------------------------------------
@@ -154,13 +158,18 @@ Private Sub AddAnalysesFromRow(S As clsTRSample, _
     Dim SampleRow   As Range
     Dim Cell        As Range
     Dim A           As clsAnalysis
+    Dim ID          As Variant
 
     Set SampleRow = SampleCell.Resize(1, SampleRange.Columns.Count)
 
     For Each Cell In SampleRow.Cells
         If Not IsEmpty(Cell) And Len(Trim$(CStr(Cell.Value))) > 0 Then
-            Set A = m_AnalysisSvc.GetByName(CStr(Cell.Value))
-            If Not A Is Nothing Then S.AddAnalysis A.ID
+            Dim AnalysisIDs As Collection
+            Set AnalysisIDs = m_AnalysisSvc.GetIDsByFormName(CStr(Cell.Value))
+
+            For Each ID In AnalysisIDs
+                S.AddAnalysis CLng(ID)
+            Next ID
         End If
     Next Cell
 
@@ -218,7 +227,7 @@ Private Sub AddAdditionalElements(S As clsTRSample, _
             If Not E Is Nothing Then
                 S.AddElement E.ID
             Else
-                m_Logger.LogError "clsSampleFormParser.AddAdditionalElements", _
+                m_Logger.LogError "clsSampleFormParser.AddAdditionalElements", vbObjectError + 2, _
                     "Element symbol not found: '" & Symbols(i) & "' — sample: " & S.SampleName
             End If
         End If
@@ -248,7 +257,7 @@ Private Function GetProcessingTime(WkS As Worksheet, SampleCell As Range, _
         Case TestingRequestTypeEnum.Water:    Col = 14
         Case TestingRequestTypeEnum.Wafer:    Col = 9
     End Select
-    GetProcessingTime = ProcessingTimeToEnum(CStr(WkS.Cells(SampleCell.Row, Col).Value))
+    GetProcessingTime = modUtilities.ProcessingTimeToEnum(CStr(WkS.Cells(SampleCell.Row, Col).Value))
 End Function
 
 Private Function GetNotesCol(RequestType As TestingRequestTypeEnum) As Long

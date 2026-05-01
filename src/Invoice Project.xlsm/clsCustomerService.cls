@@ -58,7 +58,7 @@ Public Sub Initialize(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem)
     m_Cache.Initialize m_Repo, Logger      ' Cache.Build() is called inside Initialize
 
     Exit Sub
-EH:                             HandleError "Initialize", "Failed"
+EH:                                                             HandleError "Initialize", "Failed"
 End Sub
 
 ' ----------------------------------------------------------------
@@ -78,7 +78,26 @@ Public Function AllCustomers() As Collection
     AssertInit "AllCustomers"
     Set AllCustomers = m_Cache.AllCustomers
 End Function
+Public Function GetIDByFormCustomer(FormName As String, FormAddress As String) As Long
+    AssertInit "GetIDByFormCustomer"
+    GetIDByFormCustomer = m_Cache.GetIDByFormCustomer(FormName, FormAddress)
+End Function
+Public Function FormKeyExists(Name As String, Address As String) As Boolean
+    AssertInit "FormKeyExists"
+    FormKeyExists = m_Cache.ExistsByFormCustomer(Name, Address)
+End Function
 
+Public Sub AddFormKey(Name As String, Address As String, CustomerID As Long)
+    AssertInit "AddFormKey"
+    Debug.Assert Len(Trim(Name)) > 0
+    Debug.Assert CustomerID > 0
+    If Not m_Logger.DebugMode Then On Error GoTo EH
+
+    m_Repo.InsertFormCustomer Name, Address, CustomerID
+    m_Cache.AddFormCustomerIndex Name, Address, CustomerID
+    Exit Sub
+EH:                 HandleError "AddFormKey", "Name: " & Name & " | Address: " & Address
+End Sub
 ' ----------------------------------------------------------------
 ' GetOrPrompt  —  lookup with add-on-miss (used during data entry)
 ' Returns Nothing if not found AND the user declines to add.
@@ -111,6 +130,7 @@ Public Function CreateCustomer(D As Scripting.Dictionary) As clsCustomer
     RequireUniqueName CStr(D("customer_name"))
     RequireNonBlank CStr(D("street_address")), "Street address"
     RequireNonBlank CStr(D("city")), "City"
+    RequireNonBlank CStr(D("state")), "State"
     RequireNonBlank CStr(D("postal_code")), "Postal code"
     RequireNonBlank CStr(D("country")), "Country"
 
@@ -121,7 +141,7 @@ Public Function CreateCustomer(D As Scripting.Dictionary) As clsCustomer
     SaveCustomer C
     Set CreateCustomer = C
     Exit Function
-EH:                             HandleError "CreateCustomer", "Failed on: " & D("customer_name")
+EH:                                                             HandleError "CreateCustomer", "Failed on: " & D("customer_name")
 End Function
 
 Public Sub SaveCustomer(C As clsCustomer)
@@ -139,7 +159,7 @@ Public Sub SaveCustomer(C As clsCustomer)
 
     m_Cache.Upsert C                ' incremental update — no full rebuild
     Exit Sub
-EH:                             HandleError "SaveCustomer", "Failed on: " & C.Name
+EH:                                                             HandleError "SaveCustomer", "Failed on: " & C.Name
 End Sub
 
 Public Sub DeleteCustomer(CustomerID As Long)
@@ -150,7 +170,7 @@ Public Sub DeleteCustomer(CustomerID As Long)
     m_Repo.Delete CustomerID
     m_Cache.Remove CustomerID
     Exit Sub
-EH:                             HandleError "DeleteCustomer", "Failed on ID: " & CustomerID
+EH:                                                             HandleError "DeleteCustomer", "Failed on ID: " & CustomerID
 End Sub
 
 ' ----------------------------------------------------------------
@@ -174,6 +194,7 @@ Private Function BuildNewRecord(D As Scripting.Dictionary) As Scripting.Dictiona
     R.Add "customer_name", D("customer_name")
     R.Add "street_address", D("street_address")
     R.Add "city", D("city")
+    R.Add "state", D("state")
     R.Add "postal_code", D("postal_code")
     R.Add "country", D("country")
     Set BuildNewRecord = R
@@ -197,19 +218,8 @@ Private Sub RequireNonBlank(V As String, FieldName As String)
     End If
 End Sub
 
-' Placeholder — replace body with real UserForm when ready.
-'
-' Pattern:
-'   Load frmAddCustomer
-'   frmAddCustomer.PreFill DefaultName
-'   frmAddCustomer.Show vbModal
-'   If frmAddCustomer.Confirmed Then
-'       Set ShowAddForm = CreateCustomer(frmAddCustomer.ResultDict)
-'   End If
-'   Unload frmAddCustomer
-'
 Private Function ShowAddForm(Optional DefaultName As String = "") As clsCustomer
-    m_Logger.LogInfo "clsCustomerService.ShowAddForm", "UserForm not yet implemented"
+    m_Logger.LogMessage "clsCustomerService.ShowAddForm", LogLevelEnum.LogWarning, "UserForm not yet implemented"
 End Function
 
 Private Sub AssertInit(Src As String)

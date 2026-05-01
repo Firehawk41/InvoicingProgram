@@ -54,7 +54,7 @@ End Sub
 ' APIs
 ' ====
 Public Sub BuildFromSubmissions(Submissions As Collection)
-    Dim Submission As clsTestingRequestSubmission
+    Dim Submission As clsTRSubmission
     Dim SalesOrder As clsInvoiceSalesOrder
 
     Debug.Assert Not Submissions Is Nothing

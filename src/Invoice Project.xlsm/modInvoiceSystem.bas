@@ -14,6 +14,7 @@ Option Compare Text
 '   - 6.0.0 - 2026-03-04 - Refactored to remove Word support to simplify and clean codebase
 
 Const INVOICE_DB_PATH As String = "\\PRECILAB-SERVER\LabPlusServer\Documents_In_Works\Thomson\Sample Login.accdb"
+Const OUTPUT_PATH As String = "\\PRECILAB-SERVER\LabPlusServer\Macros\Invoicing Macro\Saved Invoices\"
 Public Sub CreateInvoice()
     Call DisplayInvoiceUF(True)
 End Sub
@@ -22,6 +23,7 @@ Private Sub DisplayInvoiceUF(DebugMode As Boolean)
     Dim Logger As clsLoggingSystem
     Dim InvoiceUserForm As frmInvoiceTypeSelector
     Dim StartDate As Date
+    Dim EndDate As Date
     Dim SelectedFilePath As String
     Dim ErrorMessage As String
     Dim InvoiceType As InvoiceTypeEnum
@@ -57,6 +59,7 @@ Private Sub DisplayInvoiceUF(DebugMode As Boolean)
 
     ' Extract information from the userform
     StartDate = InvoiceUserForm.StartDate
+    EndDate = InvoiceUserForm.EndDate
     SelectedFilePath = InvoiceUserForm.SelectedFilePath
     InvoiceOutput = InvoiceUserForm.OutputType
     InvoiceSelection = InvoiceUserForm.InvoiceSelection
@@ -71,7 +74,7 @@ Private Sub DisplayInvoiceUF(DebugMode As Boolean)
     ' Close the userform
     Set InvoiceUserForm = Nothing
 
-    Call GenerateSalesOrders(StartDate, SelectedFilePath, Logger, InvoiceSelection)
+    Call GenerateSalesOrders(StartDate, EndDate, SelectedFilePath, Logger, InvoiceSelection)
 
 CleanUp:
 
@@ -100,16 +103,11 @@ ErrorHandler:
 
 End Sub
 
-Public Function GenerateSalesOrders(StartDate As Date, FilePath As String, Logger As clsLoggingSystem, Optional InvoiceSelection As InvoiceSelectionEnum = InvoiceSelectionEnum.Batch, Optional EndDate As Date) As Boolean
+Public Function GenerateSalesOrders(StartDate As Date, EndDate As Date, FilePath As String, Logger As clsLoggingSystem, Optional InvoiceSelection As InvoiceSelectionEnum = InvoiceSelectionEnum.Batch) As Boolean
 
     Dim AccessDB As clsAccessDatabase
     Dim SubmissionManager As clsInvoiceSubmissionManager
     Dim SalesOrderManager As clsInvoiceSalesOrderManager
-    Dim QuoteLoader As clsQuoteLoader
-    Dim PricingCache As clsInvoicePricingCache
-    Dim PricingEngine As clsInvoicePricingEngine
-    Dim SalesOrderBuilder As clsInvoiceSalesOrderBuilder
-    Dim LineItemBuilder As clsInvoiceLineItemBuilder
     Dim Writer As clsInvoiceWriterCSV
     Dim SalesOrder As clsInvoiceSalesOrder
     Dim StartTime As Double
@@ -120,14 +118,13 @@ Public Function GenerateSalesOrders(StartDate As Date, FilePath As String, Logge
 
     If Not Logger.DebugMode Then On Error GoTo ErrorHandler
 
-    Set AccessDB = New clsAccessDatabase
-    Call AccessDB.Initialize(INVOICE_DB_PATH, Logger)
-
     StartTime = Timer
 
-    ' Load Submissions
-    Set SubmissionManager = New clsInvoiceSubmissionManager
-    Call SubmissionManager.Initialize(AccessDB, Logger)
+    ' Build infrastructure once
+    Set AccessDB = New clsAccessDatabase
+    AccessDB.Initialize INVOICE_DB_PATH, Logger
+
+    Set SubmissionManager = BuildSubmissionManager(AccessDB, Logger)
 
     Select Case InvoiceSelection
         Case InvoiceSelectionEnum.Individual
@@ -137,6 +134,72 @@ Public Function GenerateSalesOrders(StartDate As Date, FilePath As String, Logge
         Case Else
             Err.Raise 911, , "Unknown invoice selection enum."
     End Select
+
+    ' Build sales orders
+    Set SalesOrderManager = BuildSalesOrderManager(AccessDB, Logger)
+    Call SalesOrderManager.BuildFromSubmissions(SubmissionManager.Submissions)
+
+    ' Write CSV
+    Set Writer = New clsInvoiceWriterCSV
+    Call Writer.Initialize(Logger)
+    Call Writer.BeginOutput
+
+    For Each SalesOrder In SalesOrderManager.SalesOrders
+        Call Writer.WriteInvoice(SalesOrder)
+    Next SalesOrder
+
+    If Not Logger.DebugMode Then
+        Call Writer.SaveInvoice(OUTPUT_PATH & "PRECILAB Invoice CSV" & Format(Now, "yyyymmdd hh") & "h" & Format(Now, "nn") & "m" & Format(Now, "ss") & "s")
+        Call Writer.CloseInvoice
+    End If
+
+
+    ' Flag the process as success
+    GenerateSalesOrders = True
+
+CleanUp:
+    EndTime = Timer
+    Call Logger.LogMessage("CreateInvoice", LogLevelEnum.LogInfo, "Execution time: " & Round(EndTime - StartTime, 1) & " seconds.")
+
+    ' Terminate objects
+    Set SubmissionManager = Nothing
+    Set SalesOrderManager = Nothing
+    Set AccessDB = Nothing
+
+    Exit Function
+ErrorHandler:
+    Call Logger.LogError("modInvoiceSystem.GenerateInvoiceFromFile", Err.Number, Err.Description, False)
+    GoTo CleanUp
+End Function
+Private Function BuildSubmissionManager(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem) As clsInvoiceSubmissionManager
+    Dim CustomerSvc As New clsCustomerService
+    Dim ChemicalSvc As New clsChemicalService
+    Dim AnalysisSvc As New clsAnalysisService
+    Dim ElementSvc As New clsElementService
+    Dim Resolver As New clsTRFormInputResolver
+    Dim SubmissionManager As New clsInvoiceSubmissionManager
+
+    ' Build domain services once — shared across all consumers
+    CustomerSvc.Initialize AccessDB, Logger
+    ChemicalSvc.Initialize AccessDB, Logger
+    AnalysisSvc.Initialize AccessDB, Logger
+    ElementSvc.Initialize AccessDB, Logger
+
+    ' Build resolver — needs services
+    Resolver.Initialize CustomerSvc, ChemicalSvc, ElementSvc, Logger
+
+    ' Inject everything into manager
+    SubmissionManager.Initialize AccessDB, CustomerSvc, ChemicalSvc, AnalysisSvc, ElementSvc, Resolver, Logger
+
+    Set BuildSubmissionManager = SubmissionManager
+End Function
+Private Function BuildSalesOrderManager(AccessDB As clsAccessDatabase, Logger As clsLoggingSystem) As clsInvoiceSalesOrderManager
+    Dim QuoteLoader As clsQuoteLoader
+    Dim PricingCache As clsInvoicePricingCache
+    Dim PricingEngine As clsInvoicePricingEngine
+    Dim LineItemBuilder As clsInvoiceLineItemBuilder
+    Dim SalesOrderBuilder As clsInvoiceSalesOrderBuilder
+    Dim SalesOrderManager As clsInvoiceSalesOrderManager
 
     Set QuoteLoader = New clsQuoteLoader
     QuoteLoader.Initialize AccessDB, Logger
@@ -153,42 +216,10 @@ Public Function GenerateSalesOrders(StartDate As Date, FilePath As String, Logge
     Set SalesOrderBuilder = New clsInvoiceSalesOrderBuilder
     SalesOrderBuilder.Initialize LineItemBuilder, Logger
 
-
-    ' Build sales orders
     Set SalesOrderManager = New clsInvoiceSalesOrderManager
-    Call SalesOrderManager.Initialize(Logger, AccessDB)
-    Call SalesOrderManager.BuildFromSubmissions(SubmissionManager.Submissions)
+    SalesOrderManager.Initialize SalesOrderBuilder, Logger
 
-    ' Write CSV
-    Set Writer = New clsInvoiceWriterCSV
-    Call Writer.Initialize(Logger)
-    Call Writer.BeginOutput
-
-    For Each SalesOrder In SalesOrderManager.SalesOrders
-        Call Writer.WriteInvoice(SalesOrder)
-    Next SalesOrder
-
-    If Not Logger.DebugMode Then
-        Call Writer.SaveInvoice("PRECILAB Invoice CSV" & Format(Now, "yyyymmdd hh") & "h" & Format(Now, "nn") & "m" & Format(Now, "ss") & "s")
-        Call Writer.CloseInvoice
-    End If
-
-
-    ' Flag the process as success
-    GenerateSalesOrders = True
-
-CleanUp:
-    EndTime = Timer
-    Call Logger.LogMessage("CreateInvoice", LogLevelEnum.LogInfo, "Execution time: " & Round(EndTime - StartTime, 1) & " seconds.")
-
-    ' Terminate objects
-    Set SubmissionManager = Nothing
-    Set SalesOrderManager = Nothing
-
-    Exit Function
-ErrorHandler:
-    Call Logger.LogError("modInvoiceSystem.GenerateInvoiceFromFile", Err.Number, Err.Description, False)
-    GoTo CleanUp
+    Set BuildSalesOrderManager = SalesOrderManager
 End Function
 Private Sub ValidateSubmissions(SubmissionManager As clsInvoiceSubmissionManager)
 

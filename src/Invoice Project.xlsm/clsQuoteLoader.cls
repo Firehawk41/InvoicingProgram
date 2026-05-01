@@ -53,7 +53,6 @@ Public Sub Initialize(AccessDatabase As clsAccessDatabase, Logger As clsLoggingS
 
     Set m_Logger = Logger
     Set m_AccessDB = AccessDatabase
-    Set m_SLIMDict = SLIMDict
 
     Call Logger.LogMessage("clsQuoteLoader.Initialize", LogLevelEnum.LogInfo, "Completed initializing Quote Loader")
 

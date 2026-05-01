@@ -43,7 +43,7 @@ Private m_Logger As clsLoggingSystem
 Private m_Repo   As clsChemicalRepository
 Private m_ByID   As Scripting.Dictionary   ' Long      -> clsChemical
 Private m_ByName As Scripting.Dictionary   ' LCase key -> clsChemical
-
+Private m_ByFormName As Scripting.Dictionary  ' form_name -> Long (single chemical ID)
 ' ----------------------------------------------------------------
 ' Initialization
 ' ----------------------------------------------------------------
@@ -56,6 +56,7 @@ Public Sub Initialize(Repo As clsChemicalRepository, Logger As clsLoggingSystem)
     Set m_Repo = Repo
     Set m_ByID = New Scripting.Dictionary
     Set m_ByName = New Scripting.Dictionary
+    Set m_ByFormName = New Scripting.Dictionary
 
     Build
 End Sub
@@ -77,7 +78,7 @@ Public Sub Build()
     KEDRows = m_Repo.SelectAllKEDElements
 
     ' No chemicals in DB is valid — leave the cache empty.
-    If IsEmpty(Chemicals) Then Exit Sub
+    If IsNull(Chemicals) Then Exit Sub
 
     ' Pre-index all KED rows by chemical_id before the main loop.
     Dim KEDMap As Scripting.Dictionary
@@ -98,7 +99,7 @@ Public Sub Build()
         D.Add "metals_prep", Chemicals(2, i)
         D.Add "silicon_prep", Chemicals(3, i)
         D.Add "ions_prep", Chemicals(4, i)
-        D.Add "entry_date", Chemicals(5, i)
+        D.Add "database_entry_date", Chemicals(5, i)
         If KEDMap.Exists(ChemID) Then
             D.Add "ked_elements", KEDMap(ChemID)
         End If
@@ -110,8 +111,33 @@ Public Sub Build()
         StoreInIndex C
     Next i
 
+
+    Dim FormRows As Variant
+    FormRows = m_Repo.SelectAllFormChemicals()
+
+    If Not IsEmpty(FormRows) Then
+        Dim j As Long
+        For j = LBound(FormRows, 2) To UBound(FormRows, 2)
+            Dim FormName As String
+            FormName = modUtilities.NullToDefault(FormRows(0, j), "")
+            If FormName = "" Then GoTo NextRow
+
+            Dim ChemicalID As Long
+            ChemicalID = modUtilities.NullToDefault(FormRows(1, j), 0)
+            If ChemicalID = 0 Then GoTo NextRow
+
+            Dim Key As String
+            Key = NormName(FormName)  ' normalize before storing
+            If Not m_ByFormName.Exists(Key) Then
+                m_ByFormName.Add Key, ChemicalID
+            End If
+
+NextRow:
+        Next j
+    End If
+
     Exit Sub
-EH:                                 HandleError "Build", "Failed at row " & i
+EH:                                                                 HandleError "Build", "Failed at row " & i
 End Sub
 
 ' ----------------------------------------------------------------
@@ -134,7 +160,7 @@ Public Sub Upsert(C As clsChemical)
 
     StoreInIndex C
     Exit Sub
-EH:                                 HandleError "Upsert", "Failed on ID: " & C.ID
+EH:                                                                 HandleError "Upsert", "Failed on ID: " & C.ID
 End Sub
 
 Public Sub Remove(ChemicalID As Long)
@@ -149,7 +175,7 @@ Public Sub Remove(ChemicalID As Long)
         m_ByID.Remove ChemicalID
     End If
     Exit Sub
-EH:                                 HandleError "Remove", "Failed on ID: " & ChemicalID
+EH:                                                                 HandleError "Remove", "Failed on ID: " & ChemicalID
 End Sub
 
 ' ----------------------------------------------------------------
@@ -206,13 +232,45 @@ Public Function AllChemicals() As Collection
     Next Key
     Set AllChemicals = Coll
 End Function
+Public Function GetIDByFormName(FormName As String) As Long
+    AssertInit "GetIDByFormName"
+    Dim Key As String
+    Key = NormName(FormName)  ' use the private function consistently
 
+    If m_ByFormName.Exists(Key) Then
+        GetIDByFormName = m_ByFormName(Key)
+    Else
+        GetIDByFormName = 0
+    End If
+End Function
+Public Function ExistsByFormName(FormName As String) As Boolean
+    AssertInit "ExistsByFormName"
+    ExistsByFormName = m_ByFormName.Exists(NormName(FormName))
+End Function
+
+Public Sub AddFormNameIndex(FormName As String, ChemicalID As Long)
+    AssertInit "AddFormNameIndex"
+    Debug.Assert Len(Trim(FormName)) > 0
+    Debug.Assert ChemicalID > 0
+    If Not m_Logger.DebugMode Then On Error GoTo EH
+
+    Dim Key As String
+    Key = NormName(FormName)
+
+    ' Silently skip if already indexed — duplicate form names
+    ' are a data issue, not a cache issue
+    If Not m_ByFormName.Exists(Key) Then
+        m_ByFormName.Add Key, ChemicalID
+    End If
+    Exit Sub
+EH:                             HandleError "AddFormNameIndex", "FormName: " & FormName
+End Sub
 ' ----------------------------------------------------------------
 ' Private helpers
 ' ----------------------------------------------------------------
 Private Sub StoreInIndex(C As clsChemical)
-    m_ByID(C.ID) = C
-    m_ByName(NormName(C.Name)) = C
+    Set m_ByID(C.ID) = C
+    Set m_ByName(NormName(C.Name)) = C
 End Sub
 
 Private Function BuildKEDMap(KEDRows As Variant) As Scripting.Dictionary

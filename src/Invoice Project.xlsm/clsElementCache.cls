@@ -69,7 +69,7 @@ Public Sub Build()
     Elements = m_Repo.SelectAll
 
     ' No elements in DB is valid — leave the cache empty.
-    If IsEmpty(Elements) Then Exit Sub
+    If IsNull(Elements) Then Exit Sub
 
     Dim i As Long
     Dim D As Scripting.Dictionary
@@ -90,7 +90,7 @@ Public Sub Build()
     Next i
 
     Exit Sub
-EH:                         HandleError "Build", "Failed at row " & i
+EH:                                                         HandleError "Build", "Failed at row " & i
 End Sub
 
 ' ----------------------------------------------------------------
@@ -119,7 +119,7 @@ Public Sub Upsert(E As clsElement)
 
     StoreInIndex E
     Exit Sub
-EH:                         HandleError "Upsert", "Failed on ID: " & E.ID
+EH:                                                         HandleError "Upsert", "Failed on ID: " & E.ID
 End Sub
 
 Public Sub Remove(ElementID As Long)
@@ -137,7 +137,7 @@ Public Sub Remove(ElementID As Long)
         m_ByID.Remove ElementID
     End If
     Exit Sub
-EH:                         HandleError "Remove", "Failed on ID: " & ElementID
+EH:                                                         HandleError "Remove", "Failed on ID: " & ElementID
 End Sub
 
 ' ----------------------------------------------------------------
@@ -231,9 +231,9 @@ End Function
 ' Private helpers
 ' ----------------------------------------------------------------
 Private Sub StoreInIndex(E As clsElement)
-    m_ByID(E.ID) = E
-    m_ByName(NormName(E.Name)) = E
-    m_BySymbol(NormName(E.Symbol)) = E
+    Set m_ByID(E.ID) = E
+    Set m_ByName(NormName(E.Name)) = E
+    Set m_BySymbol(NormName(E.Symbol)) = E
 End Sub
 
 Private Function NormName(V As String) As String

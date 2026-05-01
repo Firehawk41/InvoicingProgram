@@ -40,6 +40,7 @@ Private m_ID            As Long
 Private m_Name          As String
 Private m_StreetAddress As String
 Private m_City          As String
+Private m_State         As String
 Private m_PostalCode    As String
 Private m_Country       As String
 
@@ -70,6 +71,10 @@ End Property
 
 Public Property Get City() As String
     City = m_City
+End Property
+
+Public Property Get State() As String
+    State = m_State
 End Property
 
 Public Property Get PostalCode() As String
@@ -103,6 +108,7 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     RequireKey D, "customer_name"
     RequireKey D, "street_address"
     RequireKey D, "city"
+    RequireKey D, "state"
     RequireKey D, "postal_code"
     RequireKey D, "country"
 
@@ -110,11 +116,12 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     m_Name = CStr(D("customer_name"))
     m_StreetAddress = CStr(D("street_address"))
     m_City = CStr(D("city"))
+    m_State = CStr(D("state"))
     m_PostalCode = CStr(D("postal_code"))
     m_Country = CStr(D("country"))
 
     Exit Sub
-EH:                             HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
+EH:                                                             HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
 End Sub
 
 ' ----------------------------------------------------------------
@@ -129,11 +136,12 @@ Public Function ToRecord() As Scripting.Dictionary
     D.Add "customer_name", m_Name
     D.Add "street_address", m_StreetAddress
     D.Add "city", m_City
+    D.Add "state", m_State
     D.Add "postal_code", m_PostalCode
     D.Add "country", m_Country
     Set ToRecord = D
     Exit Function
-EH:                             HandleError "ToRecord", "Failed to export customer: " & m_Name
+EH:                                                             HandleError "ToRecord", "Failed to export customer: " & m_Name
 End Function
 
 ' ----------------------------------------------------------------
@@ -155,7 +163,8 @@ Friend Sub SetInternalID(NewID As Long)
 
             m_ID = NewID
             Exit Sub
-EH:                                                                                     HandleError "SetInternalID", "Failed to set ID: " & NewID & " for customer: " & m_Name
+EH:
+            HandleError "SetInternalID", "Failed to set ID: " & NewID & " for customer: " & m_Name
         End Sub
 
         ' ----------------------------------------------------------------
@@ -165,7 +174,7 @@ EH:                                                                             
             Debug.Assert D.Exists(Key)
             If Not D.Exists(Key) Then
                 Err.Raise vbObjectError + 200, "clsCustomer.LoadFromDict", _
-            "Missing required key: " & Key
+    "Missing required key: " & Key
             End If
         End Sub
 

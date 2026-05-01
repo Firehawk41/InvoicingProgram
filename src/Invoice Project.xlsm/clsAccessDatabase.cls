@@ -23,7 +23,7 @@ Private m_Connection As ADODB.Connection
 Private m_Logger As clsLoggingSystem
 Private m_TransactionActive As Boolean
 Private Enum SQLResultProcessorEnum
-    query = 1
+    Query = 1
     Scalar
 End Enum
 ' Initializes the Access database handler
@@ -68,7 +68,7 @@ Private Function ExecuteSQL(SQLQuery As String, ResultProcessor As SQLResultProc
     Rs.Open SQLQuery, m_Connection
 
     ' Process the result based on the ResultProcessor type
-    If ResultProcessor = SQLResultProcessorEnum.query Then
+    If ResultProcessor = SQLResultProcessorEnum.Query Then
         ' For multiple rows (2D array)
         If Not Rs.EOF And Not Rs.BOF Then
             Result = Rs.GetRows ' Retrieve the data as a 2D array
@@ -112,7 +112,7 @@ End Function
 
 ' Wrapper for ExecuteSQL for executing a query that returns multiple rows
 Public Function ExecuteQuery(SQLQuery As String, Optional BeginTransaction As Boolean) As Variant
-    ExecuteQuery = ExecuteSQL(SQLQuery, SQLResultProcessorEnum.query, BeginTransaction)
+    ExecuteQuery = ExecuteSQL(SQLQuery, SQLResultProcessorEnum.Query, BeginTransaction)
 End Function
 
 ' Wrapper for ExecuteSQL for executing a query that returns a single scalar value

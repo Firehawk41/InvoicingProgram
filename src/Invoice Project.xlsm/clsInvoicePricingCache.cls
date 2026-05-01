@@ -9,275 +9,148 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
 ' MacroName: clsInvoicePricingCache
-' Version: 1.0.2
 ' Author: JT
-' Created: ?
-' LastModified: 2025-12-31
+' Created: 2025-06-11
 ' Description: Caches invoice pricing details for lazy lookup
-' DependsOn: clsLoggingSystem, clsAccessDatabase, clsInvoiceQuoteBundle, modEnums
+' DependsOn: clsLoggingSystem, clsAccessDatabase, clsQuoteLoader, modEnums, clsQuote
 ' ChangeLog:
 '   - 1.0.1 - 2025-06-11 - Added metadata
 '   - 1.0.2 - 2025-12-31 - Changed 'Now' to 'Date' in GetDefaultPriceArray to fix bug that took time into account when checking if the default price was valid
-
+'   - 2.0.0 - 2026-04-02 - Refactored to use quote loader and quote objects. Instead of building the quotes from the DB, the cache now sorts and caches quotes from the loader
 Private m_Logger As clsLoggingSystem
-Private m_AccessDatabase As clsAccessDatabase
-Private m_PricingDict As Scripting.Dictionary
-Private m_DefaultPriceDict As Scripting.Dictionary
-Private Const INVOICE_DB_PATH As String = "\\PRECILAB-SERVER\LabPlusServer\Documents_In_Works\Thomson\Sample Login.accdb"
-Private Const LINE_ITEM_ID_COLUMN As Long = 0
-Private Const CUSTOMER_NAME_COLUMN As Long = 1
-Private Const REQUEST_TYPE_COLUMN As Long = 2
-Private Const BULK_MIN_COLUMN As Long = 3
-Private Const CHEMICAL_NAME_COLUMN As Long = 4
-Private Const PROCESSING_TIME_COLUMN As Long = 5
-Private Const REGULAR_PRICE_COLUMN As Long = 6
-Private Const BULK_PRICE_COLUMN As Long = 7
-Public Property Get DefaultPriceDict() As Scripting.Dictionary
-    ' Use lazy loading to generate the dictionary only when it's needed
-    If m_DefaultPriceDict Is Nothing Then
-        Set m_DefaultPriceDict = GenerateDefaultPricingDictionary()
+Private m_QuoteLoader As clsQuoteLoader
+Private m_CustomerKeyedQuoteDict As Scripting.Dictionary
+Private m_DefaultQuoteColl As Collection
+' ==============
+' Get Properties
+' ==============
+Public Property Get CustomerKeyedQuoteDict() As Scripting.Dictionary
+    If m_CustomerKeyedQuoteDict Is Nothing Then
+        Set m_CustomerKeyedQuoteDict = CompileCustomerKeyedQuoteDict
     End If
-    Set DefaultPriceDict = m_DefaultPriceDict
+    Set CustomerKeyedQuoteDict = m_CustomerKeyedQuoteDict
 End Property
+Public Property Get DefaultQuoteColl() As Collection
+    If m_DefaultQuoteColl Is Nothing Then
+        Set m_DefaultQuoteColl = CompileDefaultQuoteColl
+    End If
+    Set DefaultQuoteColl = m_DefaultQuoteColl
+End Property
+' ==============
+' Initialization
+' ==============
+Public Sub Initialize(QuoteLoader As clsQuoteLoader, Logger As clsLoggingSystem)
+    Debug.Assert Not Logger Is Nothing
+    Debug.Assert m_Logger Is Nothing
+    Debug.Assert Not QuoteLoader Is Nothing
+    Debug.Assert m_QuoteLoader Is Nothing
 
-Public Property Get PricingDict() As Scripting.Dictionary
-    ' Use lazy loading to generate the dictionary only when it's needed
-    If m_PricingDict Is Nothing Then
-        Set m_PricingDict = GeneratePricingDictionary()
-    End If
-    Set PricingDict = m_PricingDict
-End Property
-Public Sub Initialize(Logger As clsLoggingSystem, Optional AccessDatabase As clsAccessDatabase = Nothing)
-    Call Logger.LogMessage("Initialize", LogLevelEnum.LogDebug, "Initializing the pricing cache")
+    If Not Logger.DebugMode Then On Error GoTo ErrorHandler
 
     Set m_Logger = Logger
+    Set m_QuoteLoader = QuoteLoader
 
-    If AccessDatabase Is Nothing Then
-        ' Set a new database object
-        Set m_AccessDatabase = New clsAccessDatabase
-        Call m_AccessDatabase.Initialize(INVOICE_DB_PATH, Logger)
-    Else
-        ' Set the passed database object
-        Set m_AccessDatabase = AccessDatabase
-    End If
 
-    Call Logger.LogMessage("Initialize", LogLevelEnum.LogDebug, "Successfully initializing the pricing cache")
+    Exit Sub
+ErrorHandler:
+    Call HandleError("Initialize", Err.Description)
 End Sub
-Private Function GeneratePricingDictionary() As Scripting.Dictionary
-    Dim LineItemArray As Variant
-    Dim AnalysisArray As Variant
-    Dim ElementArray As Variant
+' =====================
+' Core API
+' =====================
+Public Function RetrieveQuotesByCustomer(CustomerID As Long) As Collection
+    Debug.Assert CustomerID > 0
 
-    LineItemArray = GenerateLineItemArray(m_AccessDatabase)
-    AnalysisArray = GenerateAnalysisArray(m_AccessDatabase)
-    ElementArray = GenerateElementArray(m_AccessDatabase)
+    AssertInitialized "RetrieveQuotesByCustomer"
 
-    Set GeneratePricingDictionary = CompilePricingDictionary(LineItemArray, AnalysisArray, ElementArray)
+    If Not m_Logger.DebugMode Then On Error GoTo ErrorHandler
 
-End Function
-Private Function GenerateLineItemArray(AccessDatabase As clsAccessDatabase) As Variant
-    Dim SQLQuery As String
-
-    SQLQuery = "SELECT quote_line_items.ID, customers.customer_name, quote_line_items.request_type_id, quote_line_items.bulk_min, chemicals.chemical_name, quote_prices.processing_time_id, quote_prices.regular_price, quote_prices.bulk_price " & _
-                "FROM chemicals RIGHT JOIN ((quotes INNER JOIN (customers INNER JOIN quote_customer ON customers.ID = quote_customer.customer_id) ON quotes.ID = quote_customer.quote_id) INNER JOIN (quote_line_items INNER JOIN quote_prices ON quote_line_items.ID = quote_prices.quote_line_item_id) ON quotes.ID = quote_line_items.quote_id) ON chemicals.ID = quote_line_items.chemical_id " & _
-                "WHERE quotes.valid = True " & _
-                "AND quotes.effective_date <= Date() " & _
-                "AND (quotes.expiry_date IS NULL OR quotes.expiry_date >= Date()) " & _
-                "ORDER BY quotes.effective_date DESC;"
-
-    GenerateLineItemArray = AccessDatabase.ExecuteQuery(SQLQuery)
-
-End Function
-Private Function GenerateAnalysisArray(AccessDatabase As clsAccessDatabase) As Variant
-    Dim SQLQuery As String
-
-    SQLQuery = "SELECT quote_analysis.quote_line_item_id, analyses.analysis_name " & _
-                "FROM quote_analysis " & _
-                "LEFT JOIN analyses ON quote_analysis.analysis_id = analyses.ID;"
-
-    GenerateAnalysisArray = AccessDatabase.ExecuteQuery(SQLQuery)
-End Function
-Private Function GenerateElementArray(AccessDatabase As clsAccessDatabase) As Variant
-    Dim SQLQuery As String
-
-    SQLQuery = "SELECT quote_line_item_element.quote_line_item_id, elements.element_symbol " & _
-                "FROM quote_line_item_element " & _
-                "LEFT JOIN elements ON quote_line_item_element.element_id = elements.ID;"
-
-    GenerateElementArray = AccessDatabase.ExecuteQuery(SQLQuery)
-End Function
-Private Function CompilePricingDictionary(LineItemArray As Variant, AnalysisArray As Variant, ElementArray As Variant) As Scripting.Dictionary
-    Dim LineItemIndex As Long
-    Dim PricingDict As New Scripting.Dictionary
-    Dim StaticKey As String
-    Dim BundleCollection As Collection
-    Dim QuoteBundleObj As clsInvoiceQuoteBundle
-
-
-    For LineItemIndex = LBound(LineItemArray, 2) To UBound(LineItemArray, 2)
-
-        ' Set the bundle object - this is a bundle of analyses (1 to many) that has been quoted to the customer for one price
-        Set QuoteBundleObj = GenerateQuoteBundle(LineItemArray, LineItemIndex, AnalysisArray, ElementArray)
-
-        ' Set the key for the collection of bundles
-        StaticKey = GenerateStaticKey(LineItemArray, LineItemIndex)
-
-        ' Retrieve the bundle from the dictionary or create a new one
-        If PricingDict.Exists(StaticKey) Then
-            Set BundleCollection = PricingDict(StaticKey)
-        Else
-            Set BundleCollection = New Collection
-            PricingDict.Add StaticKey, BundleCollection
-        End If
-
-        ' Add the bundle object to the collection, sorted by analyses.count
-        Call InsertBundleSorted(BundleCollection, QuoteBundleObj)
-
-    Next LineItemIndex
-
-    ' Return the dictionary to the calling sub
-    Set CompilePricingDictionary = PricingDict
-End Function
-Private Function GenerateQuoteBundle(LineItemArray As Variant, LineItemIndex As Long, AnalysisArray As Variant, ElementArray As Variant) As clsInvoiceQuoteBundle
-    Dim QuoteBundleObj As New clsInvoiceQuoteBundle
-    Dim AnalysisCollection As Collection
-    Dim ElementCollection As Collection
-    Dim LineItemID As Long
-    Dim RegularPrice As Long
-    Dim BulkPrice As Long
-    Dim BulkMin As Long
-
-
-    ' Set the line item variables
-    LineItemID = LineItemArray(LINE_ITEM_ID_COLUMN, LineItemIndex)
-    RegularPrice = LineItemArray(REGULAR_PRICE_COLUMN, LineItemIndex)
-    BulkPrice = LineItemArray(BULK_PRICE_COLUMN, LineItemIndex)
-    BulkMin = LineItemArray(BULK_MIN_COLUMN, LineItemIndex)
-
-    ' Generate the collections
-    Set AnalysisCollection = GenerateObjectCollection(LineItemID, AnalysisArray)
-    Set ElementCollection = GenerateObjectCollection(LineItemID, ElementArray)
-
-    ' Initialize and fill the object
-    Call QuoteBundleObj.Initialize(RegularPrice, BulkPrice, BulkMin, AnalysisCollection, ElementCollection, m_Logger)
-
-    ' Return the object to the calling sub
-    Set GenerateQuoteBundle = QuoteBundleObj
-
-End Function
-Private Function GenerateObjectCollection(LineItemID As Long, Arr As Variant) As Collection
-    Dim ObjectCollection As New Collection
-    Dim iIndex As Long
-
-
-    For iIndex = LBound(Arr, 2) To UBound(Arr, 2)
-        If Arr(0, iIndex) = LineItemID Then
-            ObjectCollection.Add Arr(1, iIndex)
-        End If
-    Next iIndex
-
-    ' Return the collection to the calling sub
-    Set GenerateObjectCollection = ObjectCollection
-
-End Function
-Private Function GenerateStaticKey(LineItemArray As Variant, LineItemIndex As Long) As String
-    Dim CustomerName As String
-    Dim RequestType As TestingRequestTypeEnum
-    Dim ChemicalName As String
-    Dim ProcessingTime As ProcessingTimeEnum
-
-    CustomerName = LineItemArray(CUSTOMER_NAME_COLUMN, LineItemIndex)
-    RequestType = LineItemArray(REQUEST_TYPE_COLUMN, LineItemIndex)
-    If IsNull(LineItemArray(CHEMICAL_NAME_COLUMN, LineItemIndex)) Then
-        ChemicalName = "Null"
-    Else
-        ChemicalName = LineItemArray(CHEMICAL_NAME_COLUMN, LineItemIndex)
-    End If
-    ProcessingTime = LineItemArray(PROCESSING_TIME_COLUMN, LineItemIndex)
-
-    ' Return the string to the calling sub
-    GenerateStaticKey = CustomerName & "|" & RequestType & "|" & ChemicalName & "|" & ProcessingTime
-
-End Function
-Private Sub InsertBundleSorted(ByRef BundleCollection As Collection, NewBundle As clsInvoiceQuoteBundle)
-    Dim iIndex As Long
-    Dim TempBundle As clsInvoiceQuoteBundle
-    Dim NewBundleSize As Long
-    Dim TempBundleSize As Long
-
-    ' Calculate the size of the new bundle (analyses + additional elements)
-    NewBundleSize = NewBundle.Analyses.Count + NewBundle.Elements.Count
-
-    ' If the collection is empty, just add the bundle
-    If BundleCollection.Count = 0 Then
-        BundleCollection.Add NewBundle
-        Exit Sub
+    ' Early exit if there are no quotes for this customer
+    If Not Me.CustomerKeyedQuoteDict.Exists(CustomerID) Then
+        Set RetrieveQuotesByCustomer = New Collection
+        Exit Function
     End If
 
-    ' Loop through the collection to find the right place to insert
-    For iIndex = 1 To BundleCollection.Count
-        Set TempBundle = BundleCollection(iIndex)
-        TempBundleSize = TempBundle.Analyses.Count + TempBundle.Elements.Count
-        If NewBundleSize >= TempBundleSize Then
-            BundleCollection.Add NewBundle, Before:=iIndex
-            Exit Sub
-        End If
-    Next iIndex
+    Set RetrieveQuotesByCustomer = CloneQuoteCollection(Me.CustomerKeyedQuoteDict(CustomerID))
 
-    ' If not inserted, add to the end
-    BundleCollection.Add NewBundle
+    Exit Function
+ErrorHandler:
+    HandleError "RetrieveQuotesByCustomer", "CustomerID=" & CustomerID
+End Function
+Public Function RetrieveDefaultQuotes() As Collection
+
+    AssertInitialized "RetrieveDefaultQuotes"
+
+    If Not m_Logger.DebugMode Then On Error GoTo ErrorHandler
+
+    Set RetrieveDefaultQuotes = CloneQuoteCollection(Me.DefaultQuoteColl)
+
+    Exit Function
+ErrorHandler:
+    HandleError "RetrieveDefaultQuotes"
+End Function
+
+' ===============
+' Private Helpers
+' ===============
+Private Function CloneQuoteCollection(Source As Collection) As Collection
+    Dim NewColl As New Collection
+    Dim Q As clsQuote
+
+    For Each Q In Source
+        NewColl.Add Q
+    Next
+
+    Set CloneQuoteCollection = NewColl
+End Function
+Private Function CompileCustomerKeyedQuoteDict() As Scripting.Dictionary
+    Dim QuoteColl As Collection
+    Dim CustomerColl As Collection
+    Dim Q As clsQuote
+    Dim CustomerID As Variant
+    Dim Dict As Scripting.Dictionary
+
+    Set Dict = New Scripting.Dictionary
+
+
+    For Each Q In m_QuoteLoader.Quotes
+
+        Set CustomerColl = Q.Customers
+
+        For Each CustomerID In CustomerColl
+            If Dict.Exists(CustomerID) Then
+                Dict(CustomerID).Add Q
+            Else
+
+                Set QuoteColl = New Collection
+                QuoteColl.Add Q
+
+                Set Dict(CustomerID) = QuoteColl
+            End If
+        Next CustomerID
+    Next Q
+
+    Set CompileCustomerKeyedQuoteDict = Dict
+End Function
+Private Function CompileDefaultQuoteColl() As Collection
+    Dim QuoteColl As Collection
+    Dim Q As clsQuote
+
+    Set QuoteColl = New Collection
+
+    For Each Q In m_QuoteLoader.DefaultQuotes
+        QuoteColl.Add Q
+    Next Q
+
+    Set CompileDefaultQuoteColl = QuoteColl
+
+End Function
+Private Sub HandleError(MethodName As String, Optional Context As String = "")
+    Call m_Logger.LogError("clsInvoicePricingCache." & MethodName, Err.Number, Err.Description & IIf(Context <> "", " | " & Context, ""), True)
 End Sub
-Private Function GenerateDefaultPricingDictionary() As Scripting.Dictionary
-    Dim DefaultPriceArray As Variant
 
-    DefaultPriceArray = GetDefaultPriceArray()
-
-    Set GenerateDefaultPricingDictionary = GetDefaultPriceDict(DefaultPriceArray)
-
-End Function
-Private Function GetDefaultPriceArray() As Variant
-    Dim SQLQuery As String
-
-    SQLQuery = "SELECT analyses.analysis_name, default_price.processing_time_id, default_price.price " & _
-                "FROM analyses " & _
-                "LEFT JOIN default_price ON analyses.id = default_price.analysis_id " & _
-                "WHERE default_price.start_date <= #" & Date & "# AND default_price.end_date >= #" & Date & "# AND default_price.is_active = TRUE;"
-
-    GetDefaultPriceArray = m_AccessDatabase.ExecuteQuery(SQLQuery)
-End Function
-Private Function GetDefaultPriceDict(DefaultPriceArray As Variant) As Scripting.Dictionary
-    Dim DefaultPriceDict As New Scripting.Dictionary
-    Dim ArrayIndex As Long
-    Dim StaticKey As String
-    Const DEFAULT_PRICE_COLUMN As Long = 2
-
-    ' Loop through the array
-    For ArrayIndex = 0 To UBound(DefaultPriceArray, 2)
-        ' Generate the static key
-        StaticKey = GenerateDefaultPriceKey(ArrayIndex, DefaultPriceArray)
-        ' check that the key doesn't already exist in the dictionary
-        If Not DefaultPriceDict.Exists(StaticKey) Then
-            ' add the price to the dictionary with the analysis name as the key
-            DefaultPriceDict.Add StaticKey, DefaultPriceArray(DEFAULT_PRICE_COLUMN, ArrayIndex)
-        End If
-    Next ArrayIndex
-
-    ' Log the success
-    Call m_Logger.LogMessage("GetDefaultPriceDict", LogLevelEnum.LogInfo, "Compiled the default pricing dictionary with " & DefaultPriceDict.Count & " entries.")
-
-    ' Return the dictionary to the calling sub
-    Set GetDefaultPriceDict = DefaultPriceDict
-
-End Function
-Private Function GenerateDefaultPriceKey(ArrayIndex As Long, DefaultPriceArray As Variant) As String
-    Dim Analysis As String
-    Dim ProcessingTime As ProcessingTimeEnum
-    Const DEFAULT_ANALYSIS_COLUMN As Long = 0
-    Const DEFAULT_PROCESSING_TIME_COLUMN As Long = 1
-
-    Analysis = DefaultPriceArray(DEFAULT_ANALYSIS_COLUMN, ArrayIndex)
-    ProcessingTime = DefaultPriceArray(DEFAULT_PROCESSING_TIME_COLUMN, ArrayIndex)
-
-    ' Return the static key to the calling sub
-    GenerateDefaultPriceKey = Analysis & "|" & ProcessingTime
-End Function
+Private Sub AssertInitialized(MethodName As String)
+    If m_Logger Is Nothing Then
+        Err.Raise 911, "clsInvoicePricingCache." & MethodName, "The builder must be initialized before use."
+    End If
+End Sub

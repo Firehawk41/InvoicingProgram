@@ -87,7 +87,7 @@ Public Sub LoadFromDict(D As Scripting.Dictionary)
     m_ChemicalID = CLng(D("chemical_id"))
 
     Exit Sub
-EH:                         HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
+EH:                                                         HandleError "LoadFromDict", "Keys present: " & Join(D.Keys, ", ")
 End Sub
 
 ' ----------------------------------------------------------------
@@ -107,7 +107,7 @@ Public Function ToRecord() As Scripting.Dictionary
     D.Add "chemical_id", m_ChemicalID
     Set ToRecord = D
     Exit Function
-EH:                         HandleError "ToRecord", "Failed for sample: " & m_SampleName
+EH:                                                         HandleError "ToRecord", "Failed for sample: " & m_SampleName
 End Function
 
 ' ----------------------------------------------------------------
@@ -149,7 +149,7 @@ Friend Sub SetInternalID(NewID As Long)
 
             m_ID = NewID
             Exit Sub
-EH:                                                                         HandleError "SetInternalID", "Failed to set ID: " & NewID
+EH:                                                                                                                                                                         HandleError "SetInternalID", "Failed to set ID: " & NewID
         End Sub
 
         ' ----------------------------------------------------------------
